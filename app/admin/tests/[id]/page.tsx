@@ -1,33 +1,35 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { createClient } from '@/lib/supabase/server';
-import { formatDate, getTestStatus } from '@/lib/utils';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
+import { formatDate, getTestStatus } from "@/lib/utils";
 import {
-    ArrowLeft,
-    BarChart3,
-    Calendar,
-    CheckCircle,
-    Edit,
-    FileText,
-    Users
-} from 'lucide-react';
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
+  ArrowLeft,
+  BarChart3,
+  Calendar,
+  CheckCircle,
+  Edit,
+  FileText,
+  Users,
+} from "lucide-react";
+import Link from "next/link";
+import { notFound } from "next/navigation";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export default async function AdminTestDetailPage({ 
-  params 
-}: { 
-  params: { id: string } 
+export default async function AdminTestDetailPage({
+  params,
+}: {
+  params: { id: string };
 }) {
   const supabase = await createClient();
 
   // Get test with questions
   const { data: test, error } = await supabase
-    .from('tests')
-    .select('*, questions(*), created_by_profile:profiles!tests_created_by_fkey(name)')
-    .eq('id', params.id)
+    .from("tests")
+    .select(
+      "*, questions(*), created_by_profile:profiles!tests_created_by_fkey(name)",
+    )
+    .eq("id", params.id)
     .single();
 
   if (error || !test) {
@@ -35,19 +37,23 @@ export default async function AdminTestDetailPage({
   }
 
   const testData = test as any;
-  const status = getTestStatus(testData.start_at, testData.end_at, testData.status);
+  const status = getTestStatus(
+    testData.start_at,
+    testData.end_at,
+    testData.status,
+  );
 
   // Get attempt stats
   const { count: totalAttempts } = await supabase
-    .from('attempts')
-    .select('*', { count: 'exact', head: true })
-    .eq('test_id', params.id);
+    .from("attempts")
+    .select("*", { count: "exact", head: true })
+    .eq("test_id", params.id);
 
   const { count: submittedAttempts } = await supabase
-    .from('attempts')
-    .select('*', { count: 'exact', head: true })
-    .eq('test_id', params.id)
-    .eq('status', 'submitted');
+    .from("attempts")
+    .select("*", { count: "exact", head: true })
+    .eq("test_id", params.id)
+    .eq("status", "submitted");
 
   return (
     <div className="space-y-6">
@@ -62,13 +68,20 @@ export default async function AdminTestDetailPage({
           </Link>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight">{testData.title}</h1>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                status === 'active' ? 'bg-success/20 text-success' :
-                status === 'upcoming' ? 'bg-info/20 text-info' :
-                status === 'draft' ? 'bg-muted text-muted-foreground' :
-                'bg-secondary text-secondary-foreground'
-              }`}>
+              <h1 className="text-2xl font-bold tracking-tight">
+                {testData.title}
+              </h1>
+              <span
+                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                  status === "active"
+                    ? "bg-success/20 text-success"
+                    : status === "upcoming"
+                      ? "bg-info/20 text-info"
+                      : status === "draft"
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-secondary text-secondary-foreground"
+                }`}
+              >
                 {status}
               </span>
             </div>
@@ -77,7 +90,12 @@ export default async function AdminTestDetailPage({
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <PublishTestButton
+            testId={params.id}
+            currentStatus={testData.status}
+            questionsCount={testData.questions?.length || 0}
+          />
           <Link href={`/admin/tests/${params.id}/analytics`}>
             <Button variant="outline">
               <BarChart3 className="w-4 h-4 mr-2" />
@@ -85,7 +103,7 @@ export default async function AdminTestDetailPage({
             </Button>
           </Link>
           <Link href={`/admin/tests/${params.id}/edit`}>
-            <Button variant="gradient">
+            <Button variant="secondary">
               <Edit className="w-4 h-4 mr-2" />
               Edit
             </Button>
@@ -106,7 +124,7 @@ export default async function AdminTestDetailPage({
             </CardHeader>
             <CardContent>
               <p className="text-muted-foreground">
-                {testData.description || 'No description provided'}
+                {testData.description || "No description provided"}
               </p>
             </CardContent>
           </Card>
@@ -120,34 +138,47 @@ export default async function AdminTestDetailPage({
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {(testData.questions || []).sort((a: any, b: any) => a.order_num - b.order_num).map((q: any, idx: number) => (
-                  <div key={q.id} className="p-4 rounded-lg bg-muted/30">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <span className="text-xs text-muted-foreground">Q{idx + 1}</span>
-                        <p className="font-medium">{q.prompt}</p>
-                        <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded mt-2 inline-block">
-                          {q.type} • {q.max_marks} marks
-                        </span>
+                {(testData.questions || [])
+                  .sort((a: any, b: any) => a.order_num - b.order_num)
+                  .map((q: any, idx: number) => (
+                    <div key={q.id} className="p-4 rounded-lg bg-muted/30">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <span className="text-xs text-muted-foreground">
+                            Q{idx + 1}
+                          </span>
+                          <p className="font-medium">{q.prompt}</p>
+                          <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded mt-2 inline-block">
+                            {q.type} • {q.max_marks} marks
+                          </span>
+                        </div>
                       </div>
+                      {q.options && (
+                        <div className="mt-3 ml-4 space-y-1">
+                          {q.options.map((opt: any, optIdx: number) => (
+                            <div
+                              key={optIdx}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <span className="font-medium">{opt.id}.</span>
+                              <span
+                                className={
+                                  q.correct_answer?.includes(opt.id)
+                                    ? "text-success font-medium"
+                                    : "text-muted-foreground"
+                                }
+                              >
+                                {opt.text}
+                              </span>
+                              {q.correct_answer?.includes(opt.id) && (
+                                <CheckCircle className="w-3 h-3 text-success" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                    {q.options && (
-                      <div className="mt-3 ml-4 space-y-1">
-                        {q.options.map((opt: any, optIdx: number) => (
-                          <div key={optIdx} className="flex items-center gap-2 text-sm">
-                            <span className="font-medium">{opt.id}.</span>
-                            <span className={q.correct_answer?.includes(opt.id) ? 'text-success font-medium' : 'text-muted-foreground'}>
-                              {opt.text}
-                            </span>
-                            {q.correct_answer?.includes(opt.id) && (
-                              <CheckCircle className="w-3 h-3 text-success" />
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  ))}
               </div>
             </CardContent>
           </Card>
@@ -167,7 +198,9 @@ export default async function AdminTestDetailPage({
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Duration</span>
-                <span className="font-medium">{testData.duration_minutes} min</span>
+                <span className="font-medium">
+                  {testData.duration_minutes} min
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Attempts</span>
@@ -192,18 +225,24 @@ export default async function AdminTestDetailPage({
               <div>
                 <p className="text-xs text-muted-foreground">Starts</p>
                 <p className="font-medium">
-                  {formatDate(testData.start_at, { 
-                    month: 'long', day: 'numeric', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
+                  {formatDate(testData.start_at, {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Ends</p>
                 <p className="font-medium">
-                  {formatDate(testData.end_at, { 
-                    month: 'long', day: 'numeric', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
+                  {formatDate(testData.end_at, {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </p>
               </div>
@@ -221,12 +260,16 @@ export default async function AdminTestDetailPage({
             <CardContent className="space-y-3">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Evaluators</span>
-                <span className="font-medium">{testData.evaluators_per_submission}</span>
+                <span className="font-medium">
+                  {testData.evaluators_per_submission}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Same Batch Only</span>
-                <span className={`font-medium ${testData.same_batch_only ? 'text-success' : 'text-muted-foreground'}`}>
-                  {testData.same_batch_only ? 'Yes' : 'No'}
+                <span
+                  className={`font-medium ${testData.same_batch_only ? "text-success" : "text-muted-foreground"}`}
+                >
+                  {testData.same_batch_only ? "Yes" : "No"}
                 </span>
               </div>
             </CardContent>

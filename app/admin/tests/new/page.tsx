@@ -264,6 +264,15 @@ export default function CreateTestPage() {
         maxMarks: q.maxMarks || 5,
       }));
 
+      // If there's only one question and it's empty, remove it
+      if (
+        fields.length === 1 &&
+        !watchQuestions[0].prompt &&
+        !watchQuestions[0].options?.[0].text
+      ) {
+        remove(0);
+      }
+
       newQuestions.forEach((q: any) => append(q));
 
       toast({
@@ -308,8 +317,8 @@ export default function CreateTestPage() {
           title: data.title,
           description: data.description || null,
           duration_minutes: data.durationMinutes,
-          start_at: data.startAt,
-          end_at: data.endAt,
+          start_at: new Date(data.startAt).toISOString(),
+          end_at: new Date(data.endAt).toISOString(),
           total_marks: totalMarks,
           status,
           evaluators_per_submission: data.evaluatorsPerSubmission,
@@ -547,7 +556,20 @@ export default function CreateTestPage() {
         )}
       </AnimatePresence>
 
-      <form onSubmit={handleSubmit((data) => onSubmit(data, "published"))}>
+      <form
+        onSubmit={handleSubmit(
+          (data) => onSubmit(data, "published"),
+          (errors) => {
+            console.error("Form validation errors:", errors);
+            toast({
+              variant: "destructive",
+              title: "Validation Error",
+              description:
+                "Please check the form for missing or invalid fields.",
+            });
+          },
+        )}
+      >
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-6">
@@ -863,7 +885,18 @@ export default function CreateTestPage() {
                     type="button"
                     variant="outline"
                     className="w-full"
-                    onClick={handleSubmit((data) => onSubmit(data, "draft"))}
+                    onClick={handleSubmit(
+                      (data) => onSubmit(data, "draft"),
+                      (errors) => {
+                        console.error("Draft validation errors:", errors);
+                        toast({
+                          variant: "destructive",
+                          title: "Validation Error",
+                          description:
+                            "Please check the form for missing or invalid fields.",
+                        });
+                      },
+                    )}
                     disabled={isSubmitting}
                   >
                     <Save className="w-4 h-4 mr-2" />

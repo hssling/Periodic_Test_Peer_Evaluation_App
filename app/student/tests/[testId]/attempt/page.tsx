@@ -47,7 +47,11 @@ export default async function TestAttemptPage({
   const startAt = new Date(test.start_at);
   const endAt = new Date(test.end_at);
 
-  if (test.status !== "active" || now < startAt || now > endAt) {
+  if (
+    !["published", "active"].includes(test.status) ||
+    now < startAt ||
+    now > endAt
+  ) {
     redirect(`/student/tests/${params.testId}?error=not_active`);
   }
 

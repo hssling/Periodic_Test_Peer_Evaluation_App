@@ -1,21 +1,21 @@
-'use client';
+"use client";
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
-import { getSupabaseClient } from '@/lib/supabase/client';
-import { ArrowLeft, Clock, FileText, Loader2, Save, Users } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
+import { getSupabaseClient } from "@/lib/supabase/client";
+import { ArrowLeft, Clock, FileText, Loader2, Save, Users } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
-export default function AdminTestEditPage({ 
-  params 
-}: { 
-  params: { id: string } 
+export default function AdminTestEditPage({
+  params,
+}: {
+  params: { id: string };
 }) {
   const router = useRouter();
   const supabase = getSupabaseClient();
@@ -30,54 +30,54 @@ export default function AdminTestEditPage({
 
   const fetchTest = async () => {
     const { data, error } = await supabase
-      .from('tests')
-      .select('*')
-      .eq('id', params.id)
+      .from("tests")
+      .select("*")
+      .eq("id", params.id)
       .single();
 
     if (error) {
-      toast({ variant: 'destructive', title: 'Test not found' });
-      router.push('/admin/tests');
+      toast({ variant: "destructive", title: "Test not found" });
+      router.push("/admin/tests");
       return;
     }
 
     // Format dates for datetime-local input
     const testData = data as any;
-    testData.start_at = testData.start_at?.slice(0, 16) || '';
-    testData.end_at = testData.end_at?.slice(0, 16) || '';
-    
+    testData.start_at = testData.start_at?.slice(0, 16) || "";
+    testData.end_at = testData.end_at?.slice(0, 16) || "";
+
     setTest(testData);
     setLoading(false);
   };
 
   const handleSave = async () => {
     if (!test.title) {
-      toast({ variant: 'destructive', title: 'Title is required' });
+      toast({ variant: "destructive", title: "Title is required" });
       return;
     }
 
     setSaving(true);
     try {
       const { error } = await supabase
-        .from('tests')
+        .from("tests")
         .update({
           title: test.title,
           description: test.description,
           duration_minutes: test.duration_minutes,
-          start_at: test.start_at,
-          end_at: test.end_at,
+          start_at: new Date(test.start_at).toISOString(),
+          end_at: new Date(test.end_at).toISOString(),
           status: test.status,
           evaluators_per_submission: test.evaluators_per_submission,
           same_batch_only: test.same_batch_only,
         } as any)
-        .eq('id', params.id);
+        .eq("id", params.id);
 
       if (error) throw error;
 
-      toast({ variant: 'success', title: 'Test updated successfully!' });
+      toast({ variant: "success", title: "Test updated successfully!" });
       router.push(`/admin/tests/${params.id}`);
     } catch (error: any) {
-      toast({ variant: 'destructive', title: error.message });
+      toast({ variant: "destructive", title: error.message });
     } finally {
       setSaving(false);
     }
@@ -105,7 +105,9 @@ export default function AdminTestEditPage({
           <h1 className="text-2xl font-bold tracking-tight">
             Edit <span className="text-gradient">Test</span>
           </h1>
-          <p className="text-muted-foreground">Update test details and settings</p>
+          <p className="text-muted-foreground">
+            Update test details and settings
+          </p>
         </div>
       </div>
 
@@ -121,29 +123,37 @@ export default function AdminTestEditPage({
           <div>
             <Label>Title *</Label>
             <Input
-              value={test?.title || ''}
+              value={test?.title || ""}
               onChange={(e) => setTest({ ...test, title: e.target.value })}
             />
           </div>
           <div>
             <Label>Description</Label>
             <Textarea
-              value={test?.description || ''}
-              onChange={(e) => setTest({ ...test, description: e.target.value })}
+              value={test?.description || ""}
+              onChange={(e) =>
+                setTest({ ...test, description: e.target.value })
+              }
               rows={3}
             />
           </div>
           <div>
             <Label>Status</Label>
             <select
-              value={test?.status || 'draft'}
+              value={test?.status || "draft"}
               onChange={(e) => setTest({ ...test, status: e.target.value })}
               className="w-full h-10 px-3 rounded-lg border bg-background"
             >
               <option value="draft">Draft</option>
               <option value="published">Published</option>
+              <option value="active">Active</option>
+              <option value="closed">Closed</option>
               <option value="archived">Archived</option>
             </select>
+            <p className="text-xs text-muted-foreground mt-1">
+              Published/Active tests are visible to students based on start/end
+              times
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -163,14 +173,16 @@ export default function AdminTestEditPage({
               type="number"
               min={5}
               value={test?.duration_minutes || 60}
-              onChange={(e) => setTest({ ...test, duration_minutes: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setTest({ ...test, duration_minutes: parseInt(e.target.value) })
+              }
             />
           </div>
           <div>
             <Label>Start Date/Time</Label>
             <Input
               type="datetime-local"
-              value={test?.start_at || ''}
+              value={test?.start_at || ""}
               onChange={(e) => setTest({ ...test, start_at: e.target.value })}
             />
           </div>
@@ -178,7 +190,7 @@ export default function AdminTestEditPage({
             <Label>End Date/Time</Label>
             <Input
               type="datetime-local"
-              value={test?.end_at || ''}
+              value={test?.end_at || ""}
               onChange={(e) => setTest({ ...test, end_at: e.target.value })}
             />
           </div>
@@ -201,7 +213,12 @@ export default function AdminTestEditPage({
               min={1}
               max={5}
               value={test?.evaluators_per_submission || 2}
-              onChange={(e) => setTest({ ...test, evaluators_per_submission: parseInt(e.target.value) })}
+              onChange={(e) =>
+                setTest({
+                  ...test,
+                  evaluators_per_submission: parseInt(e.target.value),
+                })
+              }
             />
           </div>
           <div className="flex items-center gap-2">
@@ -209,11 +226,14 @@ export default function AdminTestEditPage({
               type="checkbox"
               id="sameBatchOnly"
               checked={test?.same_batch_only || false}
-              onChange={(e) => setTest({ ...test, same_batch_only: e.target.checked })}
+              onChange={(e) =>
+                setTest({ ...test, same_batch_only: e.target.checked })
+              }
               className="w-4 h-4"
             />
             <Label htmlFor="sameBatchOnly" className="cursor-pointer">
-              Same batch only (students can only evaluate peers from their batch)
+              Same batch only (students can only evaluate peers from their
+              batch)
             </Label>
           </div>
         </CardContent>
@@ -225,7 +245,11 @@ export default function AdminTestEditPage({
           <Button variant="outline">Cancel</Button>
         </Link>
         <Button variant="gradient" onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          {saving ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Save className="w-4 h-4 mr-2" />
+          )}
           Save Changes
         </Button>
       </div>
