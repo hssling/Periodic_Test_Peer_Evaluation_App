@@ -6,22 +6,33 @@ import { redirect } from "next/navigation";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
+  let supabase;
+
+  try {
+    supabase = await createClient();
+  } catch (error) {
+    console.error("Failed to create Supabase client:", error);
+    redirect("/auth/login?error=server_error");
+  }
+
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (authError || !user) {
     redirect("/auth/login");
   }
 
   // Try to get existing profile
-  let { data: profileData } = await supabase
+  let { data: profileData, error: profileError } = await supabase
     .from("profiles")
     .select("*")
     .eq("user_id", user.id)
@@ -29,27 +40,43 @@ export default async function AdminLayout({
 
   // If no profile exists, create one automatically (default to student, they can be upgraded)
   if (!profileData) {
-    const { data: newProfile, error } = await supabase
-      .from("profiles")
-      .insert({
-        user_id: user.id,
-        email: user.email || "",
-        name: user.user_metadata?.name || user.email?.split("@")[0] || "User",
-        role: user.user_metadata?.role || "student", // Default to student
-        batch: user.user_metadata?.batch || null,
-        section: user.user_metadata?.section || null,
-        roll_no: user.user_metadata?.roll_no || null,
-        is_active: true,
-      } as any)
-      .select()
-      .single();
+    try {
+      const { data: newProfile, error } = await supabase
+        .from("profiles")
+        .insert({
+          user_id: user.id,
+          email: user.email || "",
+          name: user.user_metadata?.name || user.email?.split("@")[0] || "User",
+          role: user.user_metadata?.role || "student", // Default to student
+          batch: user.user_metadata?.batch || null,
+          section: user.user_metadata?.section || null,
+          roll_no: user.user_metadata?.roll_no || null,
+          is_active: true,
+        })
+        .select()
+        .single();
 
-    if (error) {
-      console.error("Error creating profile:", error);
+      if (error) {
+        console.error("Error creating profile:", error);
+        // Try to fetch again
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+
+        if (existingProfile) {
+          profileData = existingProfile;
+        } else {
+          redirect("/auth/login?error=profile_creation_failed");
+        }
+      } else {
+        profileData = newProfile;
+      }
+    } catch (createError) {
+      console.error("Exception creating profile:", createError);
       redirect("/auth/login?error=profile_creation_failed");
     }
-
-    profileData = newProfile;
   }
 
   const profile = profileData as Profile | null;
