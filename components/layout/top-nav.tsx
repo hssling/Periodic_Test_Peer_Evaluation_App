@@ -36,6 +36,7 @@ const studentNavigation = [
   { name: "My Tests", href: "/student/tests", icon: FileText },
   { name: "Evaluations", href: "/student/evaluations", icon: ClipboardCheck },
   { name: "Results", href: "/student/results", icon: BarChart3 },
+  { name: "Profile", href: "/student/profile", icon: User },
 ];
 
 const adminNavigation = [
@@ -217,11 +218,13 @@ export function TopNav({ profile }: TopNavProps) {
                     <li key={item.name}>
                       <Link
                         href={item.href}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-muted transition-colors"
+                        className="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-muted text-foreground transition-all duration-200 active:scale-95"
                         onClick={() => setMobileMenuOpen(false)}
                       >
-                        <item.icon className="h-5 w-5" />
-                        {item.name}
+                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                          <item.icon className="h-5 w-5" />
+                        </div>
+                        <span className="font-medium">{item.name}</span>
                       </Link>
                     </li>
                   ))}

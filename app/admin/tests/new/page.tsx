@@ -55,6 +55,7 @@ const testSchema = z.object({
   endAt: z.string().min(1, "End time is required"),
   evaluatorsPerSubmission: z.number().min(1).max(5),
   sameBatchOnly: z.boolean(),
+  targetBatch: z.string().optional(),
   questions: z
     .array(questionSchema)
     .min(1, "At least one question is required"),
@@ -113,6 +114,7 @@ export default function CreateTestPage() {
       endAt: "",
       evaluatorsPerSubmission: 2,
       sameBatchOnly: true,
+      targetBatch: "",
       questions: [{ ...defaultQuestion }],
     },
   });
@@ -323,6 +325,7 @@ export default function CreateTestPage() {
           status,
           evaluators_per_submission: data.evaluatorsPerSubmission,
           same_batch_only: data.sameBatchOnly,
+          target_batch: data.targetBatch || null,
           created_by: profile.id,
         } as any)
         .select()
@@ -875,6 +878,18 @@ export default function CreateTestPage() {
                     <Label htmlFor="sameBatchOnly" className="cursor-pointer">
                       Same batch only
                     </Label>
+                  </div>
+                  <div className="space-y-2 mt-4">
+                    <Label htmlFor="targetBatch">Target Batch (Optional)</Label>
+                    <Input
+                      id="targetBatch"
+                      {...register("targetBatch")}
+                      placeholder="e.g. 2024"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      If specified, only students from this batch can see/take
+                      this test.
+                    </p>
                   </div>
                 </div>
 

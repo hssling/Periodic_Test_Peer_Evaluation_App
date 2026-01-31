@@ -1,29 +1,39 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { createClient } from '@/lib/supabase/server';
-import type { Database } from '@/types/supabase';
-import {
-    GraduationCap,
-    Mail,
-    Shield,
-    UserCheck,
-    Users,
-    UserX
-} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/types/supabase";
+import { GraduationCap, Shield, UserCheck, Users, UserX } from "lucide-react";
 
-type Profile = Database['public']['Tables']['profiles']['Row'];
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export default async function AdminUsersPage() {
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: { batch?: string };
+}) {
   const supabase = await createClient();
-  
-  const { data: profiles } = await supabase
-    .from('profiles')
-    .select('*')
-    .order('created_at', { ascending: false });
+  const selectedBatch = searchParams.batch;
 
-  const students = (profiles || []).filter((p: Profile) => p.role === 'student');
-  const admins = (profiles || []).filter((p: Profile) => p.role === 'admin' || p.role === 'faculty');
+  const { data: profiles } = (await supabase
+    .from("profiles")
+    .select("*")
+    .order("created_at", { ascending: false })) as { data: Profile[] | null };
+
+  const allStudents = (profiles || []).filter(
+    (p: Profile) => p.role === "student",
+  );
+  const admins = (profiles || []).filter(
+    (p: Profile) => p.role === "admin" || p.role === "faculty",
+  );
+
+  const batches = Array.from(
+    new Set(allStudents.map((s) => s.batch).filter(Boolean)),
+  ).sort();
+
+  const students = selectedBatch
+    ? allStudents.filter((s) => s.batch === selectedBatch)
+    : allStudents;
 
   return (
     <div className="space-y-6">
@@ -61,7 +71,7 @@ export default async function AdminUsersPage() {
                 <GraduationCap className="w-5 h-5 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{students.length}</p>
+                <p className="text-2xl font-bold">{allStudents.length}</p>
                 <p className="text-xs text-muted-foreground">Students</p>
               </div>
             </div>
@@ -88,13 +98,40 @@ export default async function AdminUsersPage() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {(profiles || []).filter((p: Profile) => p.is_active).length}
+                  {(profiles || []).filter((p) => p.is_active).length}
                 </p>
                 <p className="text-xs text-muted-foreground">Active</p>
               </div>
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Batch Filter */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 no-scrollbar">
+        <a
+          href="/admin/users"
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${
+            !selectedBatch
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-background text-muted-foreground hover:bg-muted"
+          }`}
+        >
+          All Batches
+        </a>
+        {batches.map((batch) => (
+          <a
+            key={batch}
+            href={`/admin/users?batch=${batch}`}
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${
+              selectedBatch === batch
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-background text-muted-foreground hover:bg-muted"
+            }`}
+          >
+            Batch {batch}
+          </a>
+        ))}
       </div>
 
       {/* Admins/Faculty */}
@@ -106,89 +143,131 @@ export default async function AdminUsersPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {admins.map((user: Profile) => (
-              <div key={user.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span className="text-sm font-medium">{user.name[0]}</span>
-                  </div>
-                  <div>
-                    <p className="font-medium">{user.name}</p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Mail className="w-3 h-3" />
-                      {user.email}
-                    </p>
-                  </div>
+              <div
+                key={user.id}
+                className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border border-transparent hover:border-primary/20 transition-all duration-200"
+              >
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
+                  {user.name[0].toUpperCase()}
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    user.role === 'admin' ? 'bg-primary/20 text-primary' : 'bg-info/20 text-info'
-                  }`}>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold truncate">{user.name}</p>
+                  <p className="text-xs text-muted-foreground truncate uppercase tracking-wider">
                     {user.role}
-                  </span>
-                  <span className={`w-2 h-2 rounded-full ${user.is_active ? 'bg-success' : 'bg-muted'}`} />
+                  </p>
                 </div>
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    user.is_active
+                      ? "bg-success shadow-[0_0_8px_rgba(34,197,94,0.5)]"
+                      : "bg-muted"
+                  }`}
+                />
               </div>
             ))}
-            {admins.length === 0 && (
-              <p className="text-center text-muted-foreground py-4">No admins yet</p>
-            )}
           </div>
+          {admins.length === 0 && (
+            <p className="text-center text-muted-foreground py-4">
+              No admins yet
+            </p>
+          )}
         </CardContent>
       </Card>
 
       {/* Students */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <GraduationCap className="w-5 h-5" />
-            Students ({students.length})
+        <CardHeader className="flex flex-row items-center justify-between border-b px-6 py-4">
+          <CardTitle className="text-lg flex items-center gap-2 font-bold">
+            <GraduationCap className="w-6 h-6 text-primary" />
+            Students{" "}
+            {selectedBatch
+              ? `(Batch ${selectedBatch})`
+              : `(${allStudents.length})`}
           </CardTitle>
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded-md">
+            {students.length} matching students
+          </span>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           {students.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No students registered yet</p>
+            <div className="text-center text-muted-foreground py-12">
+              <Users className="w-12 h-12 mx-auto opacity-20 mb-3" />
+              <p>No students found for this selection</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-2">Name</th>
-                    <th className="text-left py-3 px-2 hidden sm:table-cell">Email</th>
-                    <th className="text-left py-3 px-2 hidden md:table-cell">Roll No</th>
-                    <th className="text-left py-3 px-2 hidden lg:table-cell">Batch</th>
-                    <th className="text-center py-3 px-2">Status</th>
+                  <tr className="bg-muted/50 text-muted-foreground">
+                    <th className="text-left font-semibold py-4 px-6">
+                      Student
+                    </th>
+                    <th className="text-left font-semibold py-4 px-6 hidden sm:table-cell">
+                      Contact
+                    </th>
+                    <th className="text-left font-semibold py-4 px-6 hidden md:table-cell">
+                      Roll No
+                    </th>
+                    <th className="text-left font-semibold py-4 px-6 hidden lg:table-cell">
+                      Batch & Group
+                    </th>
+                    <th className="text-center font-semibold py-4 px-6">
+                      Status
+                    </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y border-t">
                   {students.map((user: Profile) => (
-                    <tr key={user.id} className="border-b">
-                      <td className="py-3 px-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                            <span className="text-xs font-medium">{user.name[0]}</span>
+                    <tr
+                      key={user.id}
+                      className="hover:bg-primary/5 transition-colors group"
+                    >
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold group-hover:scale-110 transition-transform">
+                            {user.name[0].toUpperCase()}
                           </div>
-                          <span className="font-medium">{user.name}</span>
+                          <span className="font-semibold text-foreground">
+                            {user.name}
+                          </span>
                         </div>
                       </td>
-                      <td className="py-3 px-2 hidden sm:table-cell text-muted-foreground">
-                        {user.email}
+                      <td className="py-4 px-6 hidden sm:table-cell">
+                        <div className="flex flex-col">
+                          <span className="text-foreground">{user.email}</span>
+                        </div>
                       </td>
-                      <td className="py-3 px-2 hidden md:table-cell">
-                        {user.roll_no || '-'}
+                      <td className="py-4 px-6 hidden md:table-cell font-mono text-muted-foreground">
+                        {user.roll_no || "-"}
                       </td>
-                      <td className="py-3 px-2 hidden lg:table-cell">
-                        {user.batch} {user.section && `(${user.section})`}
+                      <td className="py-4 px-6 hidden lg:table-cell">
+                        <div className="flex items-center gap-2">
+                          <span className="px-2 py-1 bg-primary/10 text-primary rounded-md text-xs font-semibold">
+                            Batch {user.batch || "N/A"}
+                          </span>
+                          {user.section && (
+                            <span className="px-2 py-1 bg-accent/10 text-accent rounded-md text-xs font-semibold">
+                              Group {user.section}
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      <td className="py-3 px-2 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                          user.is_active 
-                            ? 'bg-success/20 text-success' 
-                            : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {user.is_active ? <UserCheck className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
-                          {user.is_active ? 'Active' : 'Inactive'}
+                      <td className="py-4 px-6 text-center">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                            user.is_active
+                              ? "bg-success/10 text-success border border-success/20"
+                              : "bg-muted text-muted-foreground border"
+                          }`}
+                        >
+                          {user.is_active ? (
+                            <UserCheck className="w-3.5 h-3.5" />
+                          ) : (
+                            <UserX className="w-3.5 h-3.5" />
+                          )}
+                          {user.is_active ? "ACTIVE" : "INACTIVE"}
                         </span>
                       </td>
                     </tr>

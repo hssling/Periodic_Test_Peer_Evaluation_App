@@ -28,21 +28,22 @@ export default async function StudentTestsPage() {
     redirect("/auth/login");
   }
 
-  const { data: profile } = await supabase
+  const { data: profile } = (await supabase
     .from("profiles")
     .select("*")
     .eq("user_id", user.id)
-    .single();
+    .single()) as { data: Profile | null };
 
   if (!profile) {
     redirect("/auth/login?error=no_profile");
   }
 
-  // Get all tests
+  // Get tests for this student's batch
   const { data: tests } = (await supabase
     .from("tests")
     .select("*")
     .in("status", ["active", "published", "closed"])
+    .or(`target_batch.is.null,target_batch.eq.${profile.batch}`)
     .order("start_at", { ascending: false })) as {
     data: Database["public"]["Tables"]["tests"]["Row"][] | null;
   };

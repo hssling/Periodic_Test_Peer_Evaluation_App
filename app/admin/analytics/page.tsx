@@ -22,8 +22,8 @@ export default async function AdminAnalyticsPage() {
     { count: attemptsCount },
     { count: evaluationsCount },
     { count: submittedCount },
-    { data: testData },
-    { data: attemptData },
+    testsRes,
+    attemptsRes,
   ] = await Promise.all([
     supabase.from("tests").select("*", { count: "exact", head: true }),
     supabase
@@ -41,6 +41,19 @@ export default async function AdminAnalyticsPage() {
       .from("attempts")
       .select("id, test_id, status, submitted_at, final_score"),
   ]);
+
+  const testData = testsRes.data as
+    | { id: string; title: string; total_marks: number }[]
+    | null;
+  const attemptData = attemptsRes.data as
+    | {
+        id: string;
+        test_id: string;
+        status: string;
+        submitted_at: string | null;
+        final_score: number | null;
+      }[]
+    | null;
 
   const completionRate = attemptsCount
     ? Math.round(((submittedCount || 0) / attemptsCount) * 100)
@@ -76,9 +89,9 @@ export default async function AdminAnalyticsPage() {
   ];
 
   (attemptData || []).forEach((a) => {
-    if (a.final_score === null) return;
+    if (a.final_score === null || a.final_score === undefined) return;
     const test = (testData || []).find((t) => t.id === a.test_id);
-    if (!test) return;
+    if (!test || !test.total_marks || test.total_marks === 0) return;
 
     const percentage = (a.final_score / test.total_marks) * 100;
     if (percentage <= 20) scoreDist[0].count++;

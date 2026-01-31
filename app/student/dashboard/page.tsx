@@ -37,11 +37,11 @@ export default async function StudentDashboardPage() {
   }
 
   // Get profile with error handling
-  const { data: profile, error: profileError } = await supabase
+  const { data: profile, error: profileError } = (await supabase
     .from("profiles")
     .select("*")
     .eq("user_id", user.id)
-    .single();
+    .single()) as { data: any; error: any };
 
   if (profileError || !profile) {
     console.error("Profile error:", profileError);
@@ -57,6 +57,7 @@ export default async function StudentDashboardPage() {
         .from("tests")
         .select("*")
         .in("status", ["published", "active", "closed"])
+        .or(`target_batch.is.null,target_batch.eq.${profile.batch}`)
         .order("start_at", { ascending: false }),
 
       supabase
@@ -78,10 +79,10 @@ export default async function StudentDashboardPage() {
         .limit(3),
     ]);
 
-  const tests = testsResult.data || [];
-  const attempts = attemptsResult.data || [];
-  const allocations = allocationsResult.data || [];
-  const announcements = announcementsResult.data || [];
+  const tests = (testsResult.data || []) as any[];
+  const attempts = (attemptsResult.data || []) as any[];
+  const allocations = (allocationsResult.data || []) as any[];
+  const announcements = (announcementsResult.data || []) as any[];
 
   // Log errors in background but don't crash
   if (testsResult.error) console.error("Tests fetch error:", testsResult.error);
