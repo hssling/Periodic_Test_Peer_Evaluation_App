@@ -2,22 +2,42 @@ import type { Database } from "@/types/supabase";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// Get environment variables with validation
+function getSupabaseConfig() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+
+  // Validate URL format - must start with http
+  if (supabaseUrl && !supabaseUrl.startsWith("http")) {
+    console.error(
+      `[Supabase] Invalid NEXT_PUBLIC_SUPABASE_URL: "${supabaseUrl.substring(0, 30)}..."\n` +
+        "Expected a URL starting with https://, got a token or invalid value.\n" +
+        "Please check your environment variables.",
+    );
+    return { url: "", key: "" };
+  }
+
+  return { url: supabaseUrl, key: supabaseAnonKey };
+}
+
+const config = getSupabaseConfig();
 
 export async function createClient() {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      "Your project's URL and Key are required to create a Supabase client!\n\n" +
-        "Check your Supabase project's API settings to find these values:\n" +
-        "https://supabase.com/dashboard/project/_/settings/api\n\n" +
-        "Then set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.",
+  // Use placeholder if config is invalid to prevent build crash
+  const url = config.url || "https://placeholder.supabase.co";
+  const key = config.key || "placeholder-key";
+
+  if (!config.url || !config.key) {
+    console.error(
+      "[Supabase Server] Missing or invalid environment variables.\n" +
+        "NEXT_PUBLIC_SUPABASE_URL should be like: https://yourproject.supabase.co\n" +
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY should be the anon key from Supabase dashboard.",
     );
   }
 
   const cookieStore = await cookies();
 
-  return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+  return createServerClient<Database>(url, key, {
     cookies: {
       get(name: string) {
         return cookieStore.get(name)?.value;
@@ -27,7 +47,6 @@ export async function createClient() {
           cookieStore.set({ name, value, ...options });
         } catch (error) {
           // The `set` method was called from a Server Component.
-          // This can be ignored if you have middleware refreshing sessions.
         }
       },
       remove(name: string, options: CookieOptions) {
