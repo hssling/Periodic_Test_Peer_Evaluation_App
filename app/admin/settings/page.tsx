@@ -233,7 +233,9 @@ export default function AdminSettingsPage() {
                 Push notifications
               </p>
             </div>
-            <InstallButton />
+            <Button variant="outline" className="w-full">
+              Install Application
+            </Button>
           </CardContent>
         </Card>
       </div>

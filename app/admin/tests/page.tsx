@@ -1,45 +1,67 @@
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { createClient } from '@/lib/supabase/server';
-import { formatDate, getTestStatus } from '@/lib/utils';
-import type { Database } from '@/types/supabase';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
+import { formatDate, getTestStatus } from "@/lib/utils";
+import type { Database } from "@/types/supabase";
 import {
-    BarChart3, Calendar,
-    Clock,
-    FileText,
-    Pencil,
-    Plus,
-    Users
-} from 'lucide-react';
-import Link from 'next/link';
+  AlertCircle,
+  BarChart3,
+  Calendar,
+  Clock,
+  FileText,
+  Pencil,
+  Plus,
+  Users,
+} from "lucide-react";
+import Link from "next/link";
 
-type Test = Database['public']['Tables']['tests']['Row'];
-type Attempt = Database['public']['Tables']['attempts']['Row'];
+type Test = Database["public"]["Tables"]["tests"]["Row"];
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function AdminTestsPage() {
-  const supabase = await createClient();
-  
-  const { data: tests } = await supabase
-    .from('tests')
-    .select('*')
-    .order('created_at', { ascending: false });
+  let supabase;
+  try {
+    supabase = await createClient();
+  } catch (e) {
+    return <ErrorState message="Failed to connect to database" />;
+  }
 
-  // Get attempt counts for each test
+  // Get tests
+  const { data: tests, error: testsError } = await supabase
+    .from("tests")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (testsError) {
+    console.error("Tests fetch error:", testsError);
+    return (
+      <ErrorState message="Could not load tests. Please check database connection." />
+    );
+  }
+
+  // Get attempt counts efficiently
+  // Instead of fetching every single attempt record, we do one query and count
+  // This is a trade-off. For hundreds of attempts it's fine. For millions, we'd need a view or RPC.
   const testIds = (tests || []).map((t: Test) => t.id);
-  
   let countByTest = new Map<string, number>();
-  
-  if (testIds.length > 0) {
-    const { data: attemptCounts } = await supabase
-      .from('attempts')
-      .select('test_id')
-      .in('test_id', testIds);
 
-    (attemptCounts || []).forEach((a: Pick<Attempt, 'test_id'>) => {
-      countByTest.set(a.test_id, (countByTest.get(a.test_id) || 0) + 1);
-    });
+  if (testIds.length > 0) {
+    try {
+      // Only select test_id to keep payload small
+      const { data: attemptCounts, error: countError } = await supabase
+        .from("attempts")
+        .select("test_id")
+        .in("test_id", testIds);
+
+      if (!countError && attemptCounts) {
+        attemptCounts.forEach((a: any) => {
+          countByTest.set(a.test_id, (countByTest.get(a.test_id) || 0) + 1);
+        });
+      }
+    } catch (e) {
+      console.error("Attempt counts fetch error:", e);
+    }
   }
 
   return (
@@ -64,7 +86,7 @@ export default async function AdminTestsPage() {
 
       {/* Tests Grid */}
       <div className="grid gap-4">
-        {(!tests || tests.length === 0) ? (
+        {!tests || tests.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
               <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
@@ -82,7 +104,11 @@ export default async function AdminTestsPage() {
           </Card>
         ) : (
           (tests as Test[]).map((test: Test) => {
-            const status = getTestStatus(test.start_at, test.end_at, test.status);
+            const status = getTestStatus(
+              test.start_at,
+              test.end_at,
+              test.status,
+            );
             const attemptCount = countByTest.get(test.id) || 0;
 
             return (
@@ -91,18 +117,25 @@ export default async function AdminTestsPage() {
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
-                        <h3 className="text-lg font-semibold truncate">{test.title}</h3>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
-                          status === 'active' ? 'bg-success/20 text-success' :
-                          status === 'upcoming' ? 'bg-info/20 text-info' :
-                          status === 'draft' ? 'bg-muted text-muted-foreground' :
-                          'bg-secondary text-secondary-foreground'
-                        }`}>
+                        <h3 className="text-lg font-semibold truncate">
+                          {test.title}
+                        </h3>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${
+                            status === "active"
+                              ? "bg-success/20 text-success"
+                              : status === "upcoming"
+                                ? "bg-info/20 text-info"
+                                : status === "draft"
+                                  ? "bg-muted text-muted-foreground"
+                                  : "bg-secondary text-secondary-foreground"
+                          }`}
+                        >
                           {status}
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground line-clamp-1 mb-3 sm:mb-4">
-                        {test.description || 'No description'}
+                        {test.description || "No description"}
                       </p>
                       <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
@@ -119,7 +152,10 @@ export default async function AdminTestsPage() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
-                          {formatDate(test.start_at, { month: 'short', day: 'numeric' })}
+                          {formatDate(test.start_at, {
+                            month: "short",
+                            day: "numeric",
+                          })}
                         </span>
                       </div>
                     </div>
@@ -148,5 +184,28 @@ export default async function AdminTestsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <Card className="border-destructive/50 bg-destructive/5">
+      <CardContent className="py-12 text-center">
+        <AlertCircle className="w-12 h-12 text-destructive mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-destructive">
+          Error Loading Tests
+        </h3>
+        <p className="text-muted-foreground mt-2">{message}</p>
+        <Button
+          variant="outline"
+          className="mt-6"
+          onClick={() =>
+            typeof window !== "undefined" && window.location.reload()
+          }
+        >
+          Retry
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

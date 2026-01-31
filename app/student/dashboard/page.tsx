@@ -50,74 +50,54 @@ export default async function StudentDashboardPage() {
     );
   }
 
-  // Initialize with safe defaults
-  let tests: any[] = [];
-  let attempts: any[] = [];
-  let allocations: any[] = [];
-  let announcements: any[] = [];
+  // Fetch all data in parallel for much faster performance
+  const [testsResult, attemptsResult, allocationsResult, announcementsResult] =
+    await Promise.all([
+      supabase
+        .from("tests")
+        .select("*")
+        .in("status", ["published", "active", "closed"])
+        .order("start_at", { ascending: false }),
 
-  // Get tests - with error handling
-  try {
-    const { data, error } = await supabase
-      .from("tests")
-      .select("*")
-      .in("status", ["published", "active", "closed"])
-      .order("start_at", { ascending: false });
+      supabase
+        .from("attempts")
+        .select("*, test:tests(*)")
+        .eq("student_id", profile.id),
 
-    if (!error && data) tests = data;
-    if (error) console.error("Tests fetch error:", error);
-  } catch (e) {
-    console.error("Tests fetch exception:", e);
-  }
+      supabase
+        .from("allocations")
+        .select("*, attempt:attempts(*, test:tests(*))")
+        .eq("evaluator_id", profile.id)
+        .eq("status", "pending"),
 
-  // Get user's attempts - with error handling
-  try {
-    const { data, error } = await supabase
-      .from("attempts")
-      .select("*, test:tests(*)")
-      .eq("student_id", profile.id);
+      supabase
+        .from("announcements")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(3),
+    ]);
 
-    if (!error && data) attempts = data;
-    if (error) console.error("Attempts fetch error:", error);
-  } catch (e) {
-    console.error("Attempts fetch exception:", e);
-  }
+  const tests = testsResult.data || [];
+  const attempts = attemptsResult.data || [];
+  const allocations = allocationsResult.data || [];
+  const announcements = announcementsResult.data || [];
 
-  // Get pending evaluations - with error handling
-  try {
-    const { data, error } = await supabase
-      .from("allocations")
-      .select("*, attempt:attempts(*, test:tests(*))")
-      .eq("evaluator_id", profile.id)
-      .eq("status", "pending");
-
-    if (!error && data) allocations = data;
-    if (error) console.error("Allocations fetch error:", error);
-  } catch (e) {
-    console.error("Allocations fetch exception:", e);
-  }
-
-  // Get announcements - with error handling (table may not exist)
-  try {
-    const { data, error } = await supabase
-      .from("announcements")
-      .select("*")
-      .eq("is_active", true)
-      .order("created_at", { ascending: false })
-      .limit(3);
-
-    if (!error && data) announcements = data;
-    if (error) console.error("Announcements fetch error:", error);
-  } catch (e) {
-    console.error("Announcements fetch exception:", e);
-  }
+  // Log errors in background but don't crash
+  if (testsResult.error) console.error("Tests fetch error:", testsResult.error);
+  if (attemptsResult.error)
+    console.error("Attempts fetch error:", attemptsResult.error);
+  if (allocationsResult.error)
+    console.error("Allocations fetch error:", allocationsResult.error);
+  if (announcementsResult.error)
+    console.error("Announcements fetch error:", announcementsResult.error);
 
   // Calculate stats with null safety
   const completedTests = attempts.filter(
     (a) => a.status === "submitted" || a.status === "evaluated",
   ).length;
-  const pendingEvaluations = allocations.length;
-  const activeTests = tests.filter(
+  const pendingEvaluationsCount = allocations.length;
+  const activeTestsCount = tests.filter(
     (t) => getTestStatus(t.start_at, t.end_at, t.status) === "active",
   ).length;
 
@@ -135,7 +115,7 @@ export default async function StudentDashboardPage() {
   const stats = [
     {
       name: "Active Tests",
-      value: activeTests,
+      value: activeTestsCount,
       icon: Clock,
       color: "text-warning",
       bgColor: "bg-warning/10",
@@ -149,7 +129,7 @@ export default async function StudentDashboardPage() {
     },
     {
       name: "Pending Evaluations",
-      value: pendingEvaluations,
+      value: pendingEvaluationsCount,
       icon: ListChecks,
       color: "text-info",
       bgColor: "bg-info/10",
@@ -208,7 +188,7 @@ export default async function StudentDashboardPage() {
       )}
 
       {/* Pending Evaluations Section */}
-      {pendingEvaluations > 0 && (
+      {pendingEvaluationsCount > 0 && (
         <section>
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <ListChecks className="w-5 h-5 text-info" />
@@ -218,7 +198,7 @@ export default async function StudentDashboardPage() {
             {allocations.slice(0, 3).map((allocation) => (
               <div
                 key={allocation.id}
-                className="p-4 rounded-xl border bg-card card-hover"
+                className="p-4 rounded-xl border bg-card hover:bg-muted/50 transition-colors"
               >
                 <h3 className="font-medium">
                   {allocation.attempt?.test?.title || "Unknown Test"}
@@ -297,7 +277,7 @@ export default async function StudentDashboardPage() {
 function ErrorDisplay({ message }: { message: string }) {
   return (
     <div className="flex items-center justify-center min-h-[50vh]">
-      <Card className="max-w-md">
+      <Card className="max-w-md w-full">
         <CardHeader className="text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center mb-4">
             <AlertCircle className="w-6 h-6 text-destructive" />
