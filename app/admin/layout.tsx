@@ -1,4 +1,5 @@
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
+import { PromotionFooter } from "@/components/layout/promotion-footer";
 import { TopNav } from "@/components/layout/top-nav";
 import { ErrorBoundaryUI } from "@/components/shared/error-boundary-ui";
 import { createClient } from "@/lib/supabase/server";
@@ -90,6 +91,7 @@ export default async function AdminLayout({
         <div className="lg:pl-72">
           <TopNav profile={profile} />
           <main className="py-6 px-4 sm:px-6 lg:px-8">{children}</main>
+          <PromotionFooter />
         </div>
       </div>
     );

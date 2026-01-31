@@ -1,3 +1,4 @@
+import { PromotionFooter } from "@/components/layout/promotion-footer";
 import { StudentSidebar } from "@/components/layout/student-sidebar";
 import { TopNav } from "@/components/layout/top-nav";
 import { ErrorBoundaryUI } from "@/components/shared/error-boundary-ui";
@@ -80,7 +81,7 @@ export default async function StudentLayout({
     }
 
     // Redirect admins/faculty to admin dashboard
-    if (profile.role !== "student") {
+    if ((profile as any).role !== "student") {
       redirect("/admin/dashboard");
     }
 
@@ -92,6 +93,7 @@ export default async function StudentLayout({
           <main className="py-6 px-4 sm:px-6 lg:px-8 text-foreground">
             {children}
           </main>
+          <PromotionFooter />
         </div>
       </div>
     );
