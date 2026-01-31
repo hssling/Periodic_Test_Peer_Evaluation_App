@@ -68,137 +68,139 @@ export function TopNav({ profile }: TopNavProps) {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-lg">
-      <div className="flex h-16 items-center gap-x-4 px-4 sm:px-6 lg:px-8">
-        {/* Mobile menu button */}
-        <button
-          type="button"
-          className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors"
-          onClick={() => setMobileMenuOpen(true)}
-        >
-          <Menu className="h-6 w-6" />
-        </button>
-
-        {/* Logo for mobile */}
-        <div className="lg:hidden flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-            <GraduationCap className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-semibold">Periodic Test</span>
-        </div>
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Theme toggle */}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="rounded-lg"
-        >
-          <Sun className="h-5 w-5 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
-
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="rounded-lg relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-          <span className="sr-only">Notifications</span>
-        </Button>
-
-        {/* User menu */}
-        <div className="relative">
+    <>
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur-lg">
+        <div className="flex h-16 items-center gap-x-4 px-4 sm:px-6 lg:px-8">
+          {/* Mobile menu button */}
           <button
             type="button"
-            onClick={() => setUserMenuOpen(!userMenuOpen)}
-            className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-muted transition-colors"
+            className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors"
+            onClick={() => setMobileMenuOpen(true)}
           >
-            <UserAvatar name={profile.name} size="sm" />
-            <div className="hidden sm:block text-left">
-              <p className="text-sm font-medium">{profile.name}</p>
-              <p className="text-xs text-muted-foreground capitalize">
-                {profile.role}
-              </p>
-            </div>
+            <Menu className="h-6 w-6" />
           </button>
 
-          <AnimatePresence>
-            {userMenuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-10"
-                  onClick={() => setUserMenuOpen(false)}
-                />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 z-20 mt-2 w-56 origin-top-right rounded-xl bg-card border border-border shadow-lg p-1"
-                >
-                  <div className="px-3 py-2 border-b border-border">
-                    <p className="text-sm font-medium">{profile.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {profile.email}
-                    </p>
-                  </div>
-                  <div className="py-1">
-                    <Link
-                      href={isAdmin ? "/admin/profile" : "/student/profile"}
-                      className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted rounded-lg transition-colors"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      <User className="h-4 w-4" />
-                      Profile
-                    </Link>
-                    <Link
-                      href="/settings"
-                      className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted rounded-lg transition-colors"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      <Settings className="h-4 w-4" />
-                      Settings
-                    </Link>
-                  </div>
-                  <div className="border-t border-border pt-1">
-                    <button
-                      onClick={handleLogout}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      Sign out
-                    </button>
-                  </div>
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
+          {/* Logo for mobile */}
+          <div className="lg:hidden flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+              <GraduationCap className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-semibold">Periodic Test</span>
+          </div>
 
-      {/* Mobile menu */}
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Theme toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="rounded-lg"
+          >
+            <Sun className="h-5 w-5 rotate-0 scale-100 transition-transform dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-transform dark:rotate-0 dark:scale-100" />
+            <span className="sr-only">Toggle theme</span>
+          </Button>
+
+          {/* Notifications */}
+          <Button variant="ghost" size="icon" className="rounded-lg relative">
+            <Bell className="h-5 w-5" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+            <span className="sr-only">Notifications</span>
+          </Button>
+
+          {/* User menu */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setUserMenuOpen(!userMenuOpen)}
+              className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-muted transition-colors"
+            >
+              <UserAvatar name={profile.name} size="sm" />
+              <div className="hidden sm:block text-left">
+                <p className="text-sm font-medium">{profile.name}</p>
+                <p className="text-xs text-muted-foreground capitalize">
+                  {profile.role}
+                </p>
+              </div>
+            </button>
+
+            <AnimatePresence>
+              {userMenuOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setUserMenuOpen(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 z-20 mt-2 w-56 origin-top-right rounded-xl bg-card border border-border shadow-lg p-1"
+                  >
+                    <div className="px-3 py-2 border-b border-border">
+                      <p className="text-sm font-medium">{profile.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {profile.email}
+                      </p>
+                    </div>
+                    <div className="py-1">
+                      <Link
+                        href={isAdmin ? "/admin/profile" : "/student/profile"}
+                        className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted rounded-lg transition-colors"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <User className="h-4 w-4" />
+                        Profile
+                      </Link>
+                      <Link
+                        href="/settings"
+                        className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted rounded-lg transition-colors"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <Settings className="h-4 w-4" />
+                        Settings
+                      </Link>
+                    </div>
+                    <div className="border-t border-border pt-1">
+                      <button
+                        onClick={handleLogout}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Sign out
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile menu - Moved outside header tag to break stacking context visibility issues */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <div className="fixed inset-0 z-[100] lg:hidden">
-            {/* Backdrop */}
+            {/* Backdrop with solid opacity for reliability */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+              className="absolute inset-0 bg-slate-950/90 backdrop-blur-md"
               onClick={() => setMobileMenuOpen(false)}
             />
 
-            {/* Content drawer */}
+            {/* Content drawer with forced opaque background */}
             <motion.div
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="absolute inset-y-0 left-0 w-[300px] bg-white dark:bg-slate-950 border-r border-border shadow-2xl flex flex-col h-full"
+              className="absolute inset-y-0 left-0 w-[300px] bg-white dark:bg-slate-950 border-r border-border shadow-2xl flex flex-col h-full overflow-hidden"
             >
               {/* Header inside drawer */}
               <div className="flex items-center justify-between p-6 border-b border-border bg-white dark:bg-slate-950">
@@ -226,7 +228,7 @@ export function TopNav({ profile }: TopNavProps) {
 
               {/* Navigation Items */}
               <nav className="flex-1 overflow-y-auto p-4 bg-white dark:bg-slate-950">
-                <ul className="space-y-1">
+                <ul className="space-y-2">
                   {navigation.map((item) => (
                     <li key={item.name}>
                       <Link
@@ -245,8 +247,8 @@ export function TopNav({ profile }: TopNavProps) {
               </nav>
 
               {/* Footer inside drawer */}
-              <div className="p-6 border-t border-border mt-auto bg-slate-50 dark:bg-slate-900/50">
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-900 border border-border shadow-sm">
+              <div className="p-6 border-t border-border mt-auto bg-slate-50 dark:bg-slate-900">
+                <div className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-slate-800 border border-border shadow-sm">
                   <UserAvatar name={profile.name} size="md" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold truncate text-slate-900 dark:text-white">
@@ -279,6 +281,6 @@ export function TopNav({ profile }: TopNavProps) {
           </div>
         )}
       </AnimatePresence>
-    </header>
+    </>
   );
 }
