@@ -88,6 +88,9 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Periodic Test",
   },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export const viewport: Viewport = {
