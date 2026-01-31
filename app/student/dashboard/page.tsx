@@ -1,26 +1,42 @@
 import { AnnouncementsBanner } from "@/components/shared/announcements-banner";
 import { DashboardStats } from "@/components/student/dashboard-stats";
 import { TestCard } from "@/components/student/test-card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SkeletonDashboard } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, getTestStatus } from "@/lib/utils";
-import { CheckCircle, Clock, FileText, ListChecks } from "lucide-react";
+import {
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  FileText,
+  ListChecks,
+} from "lucide-react";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudentDashboardPage() {
-  const supabase = await createClient();
+  let supabase;
+
+  try {
+    supabase = await createClient();
+  } catch (error) {
+    console.error("Failed to create Supabase client:", error);
+    return <ErrorDisplay message="Failed to connect to database" />;
+  }
+
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser();
 
-  if (!user) {
+  if (authError || !user) {
     redirect("/auth/login");
   }
 
-  // Get profile
+  // Get profile with error handling
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select("*")
@@ -29,78 +45,92 @@ export default async function StudentDashboardPage() {
 
   if (profileError || !profile) {
     console.error("Profile error:", profileError);
-    redirect("/auth/login?error=profile_not_found");
+    return (
+      <ErrorDisplay message="Could not load your profile. Please contact administrator." />
+    );
   }
 
-  // Get tests - with error handling
-  const { data: tests, error: testsError } = await supabase
-    .from("tests")
-    .select("*")
-    .in("status", ["published", "active", "closed"])
-    .order("start_at", { ascending: false });
+  // Initialize with safe defaults
+  let tests: any[] = [];
+  let attempts: any[] = [];
+  let allocations: any[] = [];
+  let announcements: any[] = [];
 
-  if (testsError) {
-    console.error("Tests fetch error:", testsError);
+  // Get tests - with error handling
+  try {
+    const { data, error } = await supabase
+      .from("tests")
+      .select("*")
+      .in("status", ["published", "active", "closed"])
+      .order("start_at", { ascending: false });
+
+    if (!error && data) tests = data;
+    if (error) console.error("Tests fetch error:", error);
+  } catch (e) {
+    console.error("Tests fetch exception:", e);
   }
 
   // Get user's attempts - with error handling
-  const { data: attempts, error: attemptsError } = await supabase
-    .from("attempts")
-    .select("*, test:tests(*)")
-    .eq("student_id", profile.id);
+  try {
+    const { data, error } = await supabase
+      .from("attempts")
+      .select("*, test:tests(*)")
+      .eq("student_id", profile.id);
 
-  if (attemptsError) {
-    console.error("Attempts fetch error:", attemptsError);
+    if (!error && data) attempts = data;
+    if (error) console.error("Attempts fetch error:", error);
+  } catch (e) {
+    console.error("Attempts fetch exception:", e);
   }
 
   // Get pending evaluations - with error handling
-  const { data: allocations, error: allocationsError } = await supabase
-    .from("allocations")
-    .select("*, attempt:attempts(*, test:tests(*))")
-    .eq("evaluator_id", profile.id)
-    .eq("status", "pending");
+  try {
+    const { data, error } = await supabase
+      .from("allocations")
+      .select("*, attempt:attempts(*, test:tests(*))")
+      .eq("evaluator_id", profile.id)
+      .eq("status", "pending");
 
-  if (allocationsError) {
-    console.error("Allocations fetch error:", allocationsError);
+    if (!error && data) allocations = data;
+    if (error) console.error("Allocations fetch error:", error);
+  } catch (e) {
+    console.error("Allocations fetch exception:", e);
   }
 
-  // Get announcements - with error handling
-  const { data: announcements, error: announcementsError } = await supabase
-    .from("announcements")
-    .select("*")
-    .eq("is_active", true)
-    .or("target_role.is.null,target_role.eq.student")
-    .order("created_at", { ascending: false })
-    .limit(3);
+  // Get announcements - with error handling (table may not exist)
+  try {
+    const { data, error } = await supabase
+      .from("announcements")
+      .select("*")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(3);
 
-  if (announcementsError) {
-    console.error("Announcements fetch error:", announcementsError);
+    if (!error && data) announcements = data;
+    if (error) console.error("Announcements fetch error:", error);
+  } catch (e) {
+    console.error("Announcements fetch exception:", e);
   }
 
   // Calculate stats with null safety
-  const completedTests =
-    attempts?.filter(
-      (a) => a.status === "submitted" || a.status === "evaluated",
-    ).length || 0;
-  const pendingEvaluations = allocations?.length || 0;
-  const safeTests = tests || [];
-  const activeTests = safeTests.filter(
+  const completedTests = attempts.filter(
+    (a) => a.status === "submitted" || a.status === "evaluated",
+  ).length;
+  const pendingEvaluations = allocations.length;
+  const activeTests = tests.filter(
     (t) => getTestStatus(t.start_at, t.end_at, t.status) === "active",
   ).length;
 
   // Categorize tests
-  const upcomingTests = safeTests.filter(
+  const upcomingTests = tests.filter(
     (t) => getTestStatus(t.start_at, t.end_at, t.status) === "upcoming",
   );
-  const activeTestsList = safeTests.filter(
+  const activeTestsList = tests.filter(
     (t) => getTestStatus(t.start_at, t.end_at, t.status) === "active",
   );
-  const completedTestsList = safeTests.filter(
+  const completedTestsList = tests.filter(
     (t) => getTestStatus(t.start_at, t.end_at, t.status) === "ended",
   );
-
-  // Check which tests user has attempted
-  const attemptedTestIds = new Set(attempts?.map((a) => a.test_id) || []);
 
   const stats = [
     {
@@ -126,7 +156,7 @@ export default async function StudentDashboardPage() {
     },
     {
       name: "Total Tests",
-      value: safeTests.length,
+      value: tests.length,
       icon: FileText,
       color: "text-primary",
       bgColor: "bg-primary/10",
@@ -148,7 +178,7 @@ export default async function StudentDashboardPage() {
       </div>
 
       {/* Announcements */}
-      {announcements && announcements.length > 0 && (
+      {announcements.length > 0 && (
         <AnnouncementsBanner announcements={announcements} />
       )}
 
@@ -169,7 +199,7 @@ export default async function StudentDashboardPage() {
               <TestCard
                 key={test.id}
                 test={test}
-                attempt={attempts?.find((a) => a.test_id === test.id)}
+                attempt={attempts.find((a) => a.test_id === test.id)}
                 status="active"
               />
             ))}
@@ -178,7 +208,7 @@ export default async function StudentDashboardPage() {
       )}
 
       {/* Pending Evaluations Section */}
-      {pendingEvaluations > 0 && allocations && (
+      {pendingEvaluations > 0 && (
         <section>
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
             <ListChecks className="w-5 h-5 text-info" />
@@ -242,7 +272,7 @@ export default async function StudentDashboardPage() {
               <TestCard
                 key={test.id}
                 test={test}
-                attempt={attempts?.find((a) => a.test_id === test.id)}
+                attempt={attempts.find((a) => a.test_id === test.id)}
                 status="ended"
               />
             ))}
@@ -251,15 +281,38 @@ export default async function StudentDashboardPage() {
       )}
 
       {/* Empty State */}
-      {safeTests.length === 0 && (
+      {tests.length === 0 && (
         <div className="text-center py-12">
           <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-medium">No tests available</h3>
+          <h3 className="text-lg font-medium">No tests available yet</h3>
           <p className="text-muted-foreground mt-1">
             Check back later for upcoming tests.
           </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function ErrorDisplay({ message }: { message: string }) {
+  return (
+    <div className="flex items-center justify-center min-h-[50vh]">
+      <Card className="max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto w-12 h-12 rounded-full bg-destructive/20 flex items-center justify-center mb-4">
+            <AlertCircle className="w-6 h-6 text-destructive" />
+          </div>
+          <CardTitle>Dashboard Error</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-center">{message}</p>
+          <div className="mt-4 text-center">
+            <a href="/auth/login" className="text-primary hover:underline">
+              ← Back to login
+            </a>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
