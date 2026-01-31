@@ -43,8 +43,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // If authenticated, get user profile for role-based routing
-  if (user) {
+  // If authenticated and supabase is available, get user profile for role-based routing
+  if (user && supabase) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
