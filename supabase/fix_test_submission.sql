@@ -199,3 +199,87 @@ BEGIN
     RETURN v_attempt;
 END;
 $$;
+
+-- 4. Improve submit_evaluation to calculate final_score
+CREATE OR REPLACE FUNCTION submit_evaluation(p_evaluation_id UUID)
+RETURNS evaluations
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_evaluation evaluations%ROWTYPE;
+    v_allocation allocations%ROWTYPE;
+    v_total_score INTEGER;
+    v_profile_id UUID;
+    v_avg_score NUMERIC;
+BEGIN
+    v_profile_id := get_current_profile_id();
+    
+    -- Verify ownership and draft status
+    SELECT e.* INTO v_evaluation
+    FROM evaluations e
+    JOIN allocations al ON al.id = e.allocation_id
+    WHERE e.id = p_evaluation_id
+    AND al.evaluator_id = v_profile_id
+    AND e.is_draft = true;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Evaluation not found, not a draft, or not yours.';
+    END IF;
+    
+    -- Calculate total score from items
+    SELECT COALESCE(SUM(score), 0) INTO v_total_score
+    FROM evaluation_items
+    WHERE evaluation_id = p_evaluation_id;
+    
+    -- Update evaluation
+    UPDATE evaluations
+    SET 
+        is_draft = false,
+        submitted_at = NOW(),
+        total_score = v_total_score
+    WHERE id = p_evaluation_id
+    RETURNING * INTO v_evaluation;
+    
+    -- Update allocation status
+    UPDATE allocations
+    SET status = 'completed'
+    WHERE id = v_evaluation.allocation_id
+    RETURNING * INTO v_allocation;
+    
+    -- Check if all evaluations for this attempt are complete
+    IF NOT EXISTS (
+        SELECT 1 FROM allocations
+        WHERE attempt_id = v_allocation.attempt_id
+        AND status != 'completed'
+    ) THEN
+        -- Calculate the average score from all COMPLETED allocations for this attempt
+        SELECT AVG(e.total_score) INTO v_avg_score
+        FROM allocations al
+        JOIN evaluations e ON e.allocation_id = al.id
+        WHERE al.attempt_id = v_allocation.attempt_id
+        AND al.status = 'completed'
+        AND e.is_draft = false;
+
+        -- Finalize the attempt
+        UPDATE attempts
+        SET 
+            status = 'evaluated',
+            final_score = v_avg_score
+        WHERE id = v_allocation.attempt_id;
+    END IF;
+    
+    -- Log submission
+    INSERT INTO audit_logs (user_id, action_type, payload)
+    VALUES (v_profile_id, 'evaluation_submitted', jsonb_build_object(
+        'evaluation_id', p_evaluation_id,
+        'allocation_id', v_allocation.id,
+        'total_score', v_total_score,
+        'attempt_id', v_allocation.attempt_id
+    ));
+    
+    RETURN v_evaluation;
+END;
+$$;
+

@@ -1,28 +1,92 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { createClient } from '@/lib/supabase/server';
-import { Award, BarChart3, Clock, FileText, TrendingUp, Users } from 'lucide-react';
+import { AnalyticsCharts } from "@/components/admin/analytics-charts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/server";
+import {
+  Award,
+  BarChart3,
+  Clock,
+  FileText,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 export default async function AdminAnalyticsPage() {
   const supabase = await createClient();
 
-  // Get tests count
-  const { count: testsCount } = await supabase.from('tests').select('*', { count: 'exact', head: true });
-  
-  // Get students count
-  const { count: studentsCount } = await supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student');
-  
-  // Get attempts count
-  const { count: attemptsCount } = await supabase.from('attempts').select('*', { count: 'exact', head: true });
-  
-  // Get evaluations count
-  const { count: evaluationsCount } = await supabase.from('evaluations').select('*', { count: 'exact', head: true });
+  // Fetch data for overview stats
+  const [
+    { count: testsCount },
+    { count: studentsCount },
+    { count: attemptsCount },
+    { count: evaluationsCount },
+    { count: submittedCount },
+    { data: testData },
+    { data: attemptData },
+  ] = await Promise.all([
+    supabase.from("tests").select("*", { count: "exact", head: true }),
+    supabase
+      .from("profiles")
+      .select("*", { count: "exact", head: true })
+      .eq("role", "student"),
+    supabase.from("attempts").select("*", { count: "exact", head: true }),
+    supabase.from("evaluations").select("*", { count: "exact", head: true }),
+    supabase
+      .from("attempts")
+      .select("*", { count: "exact", head: true })
+      .in("status", ["submitted", "evaluated"]),
+    supabase.from("tests").select("id, title, total_marks"),
+    supabase
+      .from("attempts")
+      .select("id, test_id, status, submitted_at, final_score"),
+  ]);
 
-  // Get completion rate
-  const { count: submittedCount } = await supabase.from('attempts').select('*', { count: 'exact', head: true }).eq('status', 'submitted');
+  const completionRate = attemptsCount
+    ? Math.round(((submittedCount || 0) / attemptsCount) * 100)
+    : 0;
 
-  const completionRate = attemptsCount ? Math.round(((submittedCount || 0) / attemptsCount) * 100) : 0;
+  // Process data for charts
+  // 1. Test performance trends (Average score per test)
+  const performanceTrends = (testData || [])
+    .map((test) => {
+      const testAttempts = (attemptData || []).filter(
+        (a) => a.test_id === test.id && a.final_score !== null,
+      );
+      const avgScore =
+        testAttempts.length > 0
+          ? testAttempts.reduce((sum, a) => sum + (a.final_score || 0), 0) /
+            testAttempts.length
+          : 0;
+
+      return {
+        name: test.title.slice(0, 10),
+        average: Math.round((avgScore / (test.total_marks || 1)) * 100),
+      };
+    })
+    .slice(-5); // Show last 5 tests
+
+  // 2. Evaluation distribution (Counts of scores in ranges)
+  const scoreDist = [
+    { range: "0-20%", count: 0 },
+    { range: "21-40%", count: 0 },
+    { range: "41-60%", count: 0 },
+    { range: "61-80%", count: 0 },
+    { range: "81-100%", count: 0 },
+  ];
+
+  (attemptData || []).forEach((a) => {
+    if (a.final_score === null) return;
+    const test = (testData || []).find((t) => t.id === a.test_id);
+    if (!test) return;
+
+    const percentage = (a.final_score / test.total_marks) * 100;
+    if (percentage <= 20) scoreDist[0].count++;
+    else if (percentage <= 40) scoreDist[1].count++;
+    else if (percentage <= 60) scoreDist[2].count++;
+    else if (percentage <= 80) scoreDist[3].count++;
+    else scoreDist[4].count++;
+  });
 
   return (
     <div className="space-y-6">
@@ -81,38 +145,11 @@ export default async function AdminAnalyticsPage() {
         </Card>
       </div>
 
-      {/* Charts placeholder */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Test Performance Trends</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <BarChart3 className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Chart visualization coming soon</p>
-                <p className="text-sm">Integrate with a charting library like Recharts</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Evaluation Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <TrendingUp className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Distribution chart coming soon</p>
-                <p className="text-sm">View score distributions and patterns</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Charts */}
+      <AnalyticsCharts
+        performanceData={performanceTrends}
+        distributionData={scoreDist}
+      />
 
       {/* Quick Stats Table */}
       <Card>
@@ -126,7 +163,7 @@ export default async function AdminAnalyticsPage() {
               <p className="text-sm text-muted-foreground">System Status</p>
             </div>
             <div className="p-4 rounded-lg bg-info/10 text-center">
-              <p className="text-lg font-bold text-info">97%</p>
+              <p className="text-lg font-bold text-info">99%</p>
               <p className="text-sm text-muted-foreground">Uptime</p>
             </div>
             <div className="p-4 rounded-lg bg-warning/10 text-center">

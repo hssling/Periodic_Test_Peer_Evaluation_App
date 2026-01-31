@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, getTestStatus } from "@/lib/utils";
+import { Database } from "@/types/supabase";
 import {
   ArrowRight,
   Calendar,
@@ -11,6 +12,9 @@ import {
   Play,
 } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+
+type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 export const dynamic = "force-dynamic";
 
@@ -20,26 +24,38 @@ export default async function StudentTestsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  if (!user) {
+    redirect("/auth/login");
+  }
+
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
-    .eq("user_id", user!.id)
+    .eq("user_id", user.id)
     .single();
 
+  if (!profile) {
+    redirect("/auth/login?error=no_profile");
+  }
+
   // Get all tests
-  const { data: tests } = await supabase
+  const { data: tests } = (await supabase
     .from("tests")
     .select("*")
     .in("status", ["active", "published", "closed"])
-    .order("start_at", { ascending: false });
+    .order("start_at", { ascending: false })) as {
+    data: Database["public"]["Tables"]["tests"]["Row"][] | null;
+  };
 
   // Get user's attempts
-  const { data: attempts } = await supabase
+  const { data: attempts } = (await supabase
     .from("attempts")
     .select("*")
-    .eq("student_id", profile!.id);
+    .eq("student_id", profile.id)) as {
+    data: Database["public"]["Tables"]["attempts"]["Row"][] | null;
+  };
 
-  const attemptsByTest = new Map(attempts?.map((a) => [a.test_id, a]) || []);
+  const attemptsByTest = new Map((attempts || []).map((a) => [a.test_id, a]));
 
   const categorizedTests = {
     active: [] as any[],
