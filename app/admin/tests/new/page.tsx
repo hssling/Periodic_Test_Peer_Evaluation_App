@@ -1,66 +1,75 @@
-'use client';
+"use client";
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { AnimatePresence, motion } from 'framer-motion';
+import { zodResolver } from "@hookform/resolvers/zod";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-    Brain,
-    ChevronDown, ChevronUp,
-    Clock,
-    FileText,
-    GripVertical,
-    Import,
-    Loader2,
-    Plus,
-    Save, Send, Sparkles,
-    Trash2,
-    Users,
-    Wand2
-} from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { useFieldArray, useForm } from 'react-hook-form';
-import { z } from 'zod';
+  Brain,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  FileText,
+  GripVertical,
+  Import,
+  Loader2,
+  Plus,
+  Save,
+  Send,
+  Sparkles,
+  Trash2,
+  Users,
+  Wand2,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useFieldArray, useForm } from "react-hook-form";
+import { z } from "zod";
 
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/components/ui/use-toast';
-import { getSupabaseClient } from '@/lib/supabase/client';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/components/ui/use-toast";
+import { getSupabaseClient } from "@/lib/supabase/client";
 
 const questionSchema = z.object({
-  type: z.enum(['mcq_single', 'mcq_multi', 'short', 'long']),
-  prompt: z.string().min(1, 'Question is required'),
-  options: z.array(z.object({
-    id: z.string(),
-    text: z.string(),
-  })).optional(),
+  type: z.enum(["mcq_single", "mcq_multi", "short", "long"]),
+  prompt: z.string().min(1, "Question is required"),
+  options: z
+    .array(
+      z.object({
+        id: z.string(),
+        text: z.string(),
+      }),
+    )
+    .optional(),
   correctAnswer: z.array(z.string()).optional(),
-  maxMarks: z.number().min(1, 'Marks must be at least 1'),
+  maxMarks: z.number().min(1, "Marks must be at least 1"),
 });
 
 const testSchema = z.object({
-  title: z.string().min(1, 'Title is required'),
+  title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
-  durationMinutes: z.number().min(5, 'Duration must be at least 5 minutes'),
-  startAt: z.string().min(1, 'Start time is required'),
-  endAt: z.string().min(1, 'End time is required'),
+  durationMinutes: z.number().min(5, "Duration must be at least 5 minutes"),
+  startAt: z.string().min(1, "Start time is required"),
+  endAt: z.string().min(1, "End time is required"),
   evaluatorsPerSubmission: z.number().min(1).max(5),
   sameBatchOnly: z.boolean(),
-  questions: z.array(questionSchema).min(1, 'At least one question is required'),
+  questions: z
+    .array(questionSchema)
+    .min(1, "At least one question is required"),
 });
 
 type TestFormData = z.infer<typeof testSchema>;
 
 const defaultQuestion = {
-  type: 'mcq_single' as const,
-  prompt: '',
+  type: "mcq_single" as const,
+  prompt: "",
   options: [
-    { id: 'A', text: '' },
-    { id: 'B', text: '' },
-    { id: 'C', text: '' },
-    { id: 'D', text: '' },
+    { id: "A", text: "" },
+    { id: "B", text: "" },
+    { id: "C", text: "" },
+    { id: "D", text: "" },
   ],
   correctAnswer: [],
   maxMarks: 5,
@@ -71,16 +80,20 @@ export default function CreateTestPage() {
   const { toast } = useToast();
   const supabase = getSupabaseClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(new Set([0]));
-  
+  const [expandedQuestions, setExpandedQuestions] = useState<Set<number>>(
+    new Set([0]),
+  );
+
   // AI Generation State
   const [showAIPanel, setShowAIPanel] = useState(false);
   const [showImportPanel, setShowImportPanel] = useState(false);
-  const [aiScript, setAiScript] = useState('');
+  const [aiScript, setAiScript] = useState("");
   const [aiQuestionCount, setAiQuestionCount] = useState(5);
-  const [aiDifficulty, setAiDifficulty] = useState('medium');
+  const [aiDifficulty, setAiDifficulty] = useState("medium");
   const [aiGenerating, setAiGenerating] = useState(false);
-  const [googleFormsUrl, setGoogleFormsUrl] = useState('');
+  const [aiProvider, setAiProvider] = useState("openai");
+  const [aiApiKey, setAiApiKey] = useState("");
+  const [googleFormsUrl, setGoogleFormsUrl] = useState("");
   const [importing, setImporting] = useState(false);
 
   const {
@@ -93,11 +106,11 @@ export default function CreateTestPage() {
   } = useForm<TestFormData>({
     resolver: zodResolver(testSchema),
     defaultValues: {
-      title: '',
-      description: '',
+      title: "",
+      description: "",
       durationMinutes: 60,
-      startAt: '',
-      endAt: '',
+      startAt: "",
+      endAt: "",
       evaluatorsPerSubmission: 2,
       sameBatchOnly: true,
       questions: [{ ...defaultQuestion }],
@@ -106,15 +119,16 @@ export default function CreateTestPage() {
 
   const { fields, append, remove, move } = useFieldArray({
     control,
-    name: 'questions',
+    name: "questions",
   });
 
-  const watchQuestions = watch('questions');
+  const watchQuestions = watch("questions");
 
-  const totalMarks = watchQuestions?.reduce((acc, q) => acc + (q.maxMarks || 0), 0) || 0;
+  const totalMarks =
+    watchQuestions?.reduce((acc, q) => acc + (q.maxMarks || 0), 0) || 0;
 
   const toggleQuestionExpand = (index: number) => {
-    setExpandedQuestions(prev => {
+    setExpandedQuestions((prev) => {
       const next = new Set(prev);
       if (next.has(index)) next.delete(index);
       else next.add(index);
@@ -125,52 +139,76 @@ export default function CreateTestPage() {
   // AI Question Generation
   const handleAIGenerate = async () => {
     if (aiScript.length < 50) {
-      toast({ variant: 'destructive', title: 'Script must be at least 50 characters' });
+      toast({
+        variant: "destructive",
+        title: "Script must be at least 50 characters",
+      });
       return;
     }
 
     setAiGenerating(true);
     try {
-      const response = await fetch('/api/ai/generate-questions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/ai/generate-questions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           script: aiScript,
           questionCount: aiQuestionCount,
           difficulty: aiDifficulty,
-          questionTypes: ['mcq_single', 'mcq_multi', 'short_answer', 'long_answer'],
+          aiProvider: aiProvider,
+          apiKey: aiApiKey || undefined,
+          questionTypes: [
+            "mcq_single",
+            "mcq_multi",
+            "short_answer",
+            "long_answer",
+          ],
         }),
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to generate questions');
+        throw new Error(data.error || "Failed to generate questions");
       }
 
       // Convert AI response to form format
       const newQuestions = data.questions.map((q: any) => ({
-        type: q.type === 'short_answer' ? 'short' : q.type === 'long_answer' ? 'long' : q.type,
+        type:
+          q.type === "short_answer"
+            ? "short"
+            : q.type === "long_answer"
+              ? "long"
+              : q.type,
         prompt: q.prompt,
-        options: q.options?.map((opt: string, idx: number) => ({ id: String.fromCharCode(65 + idx), text: opt })) || [
-          { id: 'A', text: '' }, { id: 'B', text: '' }, { id: 'C', text: '' }, { id: 'D', text: '' }
+        options: q.options?.map((opt: string, idx: number) => ({
+          id: String.fromCharCode(65 + idx),
+          text: opt,
+        })) || [
+          { id: "A", text: "" },
+          { id: "B", text: "" },
+          { id: "C", text: "" },
+          { id: "D", text: "" },
         ],
-        correctAnswer: q.correctAnswer?.split(',').map((i: string) => String.fromCharCode(65 + parseInt(i))) || [],
+        correctAnswer:
+          q.correctAnswer
+            ?.split(",")
+            .map((i: string) => String.fromCharCode(65 + parseInt(i))) || [],
         maxMarks: q.maxMarks || 5,
       }));
 
       // Add to existing questions
       newQuestions.forEach((q: any) => append(q));
-      
-      toast({ 
-        variant: 'success', 
+
+      toast({
+        variant: "success",
         title: `Generated ${newQuestions.length} questions!`,
-        description: 'Questions have been added to your test.'
+        description: "Questions have been added to your test.",
       });
       setShowAIPanel(false);
-      setAiScript('');
+      setAiScript("");
     } catch (error: any) {
-      toast({ variant: 'destructive', title: error.message });
+      toast({ variant: "destructive", title: error.message });
     } finally {
       setAiGenerating(false);
     }
@@ -179,71 +217,93 @@ export default function CreateTestPage() {
   // Google Forms Import
   const handleGoogleFormsImport = async () => {
     if (!googleFormsUrl) {
-      toast({ variant: 'destructive', title: 'Please enter a Google Forms URL' });
+      toast({
+        variant: "destructive",
+        title: "Please enter a Google Forms URL",
+      });
       return;
     }
 
     setImporting(true);
     try {
-      const response = await fetch('/api/import/google-forms', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("/api/import/google-forms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ formUrl: googleFormsUrl }),
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to import from Google Forms');
+        throw new Error(data.error || "Failed to import from Google Forms");
       }
 
       // Convert imported questions to form format
       const newQuestions = data.questions.map((q: any) => ({
-        type: q.type === 'short_answer' ? 'short' : q.type === 'long_answer' ? 'long' : 
-              q.type === 'mcq_single' ? 'mcq_single' : q.type === 'mcq_multiple' ? 'mcq_multi' : 'short',
+        type:
+          q.type === "short_answer"
+            ? "short"
+            : q.type === "long_answer"
+              ? "long"
+              : q.type === "mcq_single"
+                ? "mcq_single"
+                : q.type === "mcq_multiple"
+                  ? "mcq_multi"
+                  : "short",
         prompt: q.prompt,
-        options: q.options?.map((opt: string, idx: number) => ({ id: String.fromCharCode(65 + idx), text: opt })) || [
-          { id: 'A', text: '' }, { id: 'B', text: '' }, { id: 'C', text: '' }, { id: 'D', text: '' }
+        options: q.options?.map((opt: string, idx: number) => ({
+          id: String.fromCharCode(65 + idx),
+          text: opt,
+        })) || [
+          { id: "A", text: "" },
+          { id: "B", text: "" },
+          { id: "C", text: "" },
+          { id: "D", text: "" },
         ],
         correctAnswer: [],
         maxMarks: q.maxMarks || 5,
       }));
 
       newQuestions.forEach((q: any) => append(q));
-      
-      toast({ 
-        variant: 'success', 
+
+      toast({
+        variant: "success",
         title: data.message,
       });
       setShowImportPanel(false);
-      setGoogleFormsUrl('');
+      setGoogleFormsUrl("");
     } catch (error: any) {
-      toast({ variant: 'destructive', title: error.message });
+      toast({ variant: "destructive", title: error.message });
     } finally {
       setImporting(false);
     }
   };
 
-  const onSubmit = async (data: TestFormData, status: 'draft' | 'published') => {
+  const onSubmit = async (
+    data: TestFormData,
+    status: "draft" | "published",
+  ) => {
     setIsSubmitting(true);
 
     try {
       // Get current user profile
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('Not authenticated');
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
 
       const { data: profileData } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
         .single();
 
-      if (!profileData) throw new Error('Profile not found');
+      if (!profileData) throw new Error("Profile not found");
       const profile = profileData as { id: string };
 
       // Create test
       const { data: test, error: testError } = await supabase
-        .from('tests')
+        .from("tests")
         .insert({
           title: data.title,
           description: data.description || null,
@@ -260,8 +320,8 @@ export default function CreateTestPage() {
         .single();
 
       if (testError) throw testError;
-      if (!test) throw new Error('Failed to create test');
-      
+      if (!test) throw new Error("Failed to create test");
+
       const testData = test as { id: string };
 
       // Create questions
@@ -269,28 +329,28 @@ export default function CreateTestPage() {
         test_id: testData.id,
         type: q.type,
         prompt: q.prompt,
-        options: q.type.startsWith('mcq') ? q.options : null,
-        correct_answer: q.type.startsWith('mcq') ? q.correctAnswer : null,
+        options: q.type.startsWith("mcq") ? q.options : null,
+        correct_answer: q.type.startsWith("mcq") ? q.correctAnswer : null,
         max_marks: q.maxMarks,
         order_num: index + 1,
       }));
 
       const { error: questionsError } = await supabase
-        .from('questions')
+        .from("questions")
         .insert(questions as any);
 
       if (questionsError) throw questionsError;
 
       toast({
-        variant: 'success',
-        title: `Test ${status === 'draft' ? 'saved as draft' : 'published'}!`,
+        variant: "success",
+        title: `Test ${status === "draft" ? "saved as draft" : "published"}!`,
       });
 
-      router.push('/admin/tests');
+      router.push("/admin/tests");
     } catch (error: any) {
       toast({
-        variant: 'destructive',
-        title: 'Error creating test',
+        variant: "destructive",
+        title: "Error creating test",
         description: error.message,
       });
     } finally {
@@ -311,18 +371,24 @@ export default function CreateTestPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button 
-            variant="outline" 
-            onClick={() => { setShowAIPanel(!showAIPanel); setShowImportPanel(false); }}
-            className={showAIPanel ? 'border-primary' : ''}
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowAIPanel(!showAIPanel);
+              setShowImportPanel(false);
+            }}
+            className={showAIPanel ? "border-primary" : ""}
           >
             <Sparkles className="w-4 h-4 mr-2" />
             AI Generate
           </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => { setShowImportPanel(!showImportPanel); setShowAIPanel(false); }}
-            className={showImportPanel ? 'border-primary' : ''}
+          <Button
+            variant="outline"
+            onClick={() => {
+              setShowImportPanel(!showImportPanel);
+              setShowAIPanel(false);
+            }}
+            className={showImportPanel ? "border-primary" : ""}
           >
             <Import className="w-4 h-4 mr-2" />
             Import
@@ -335,7 +401,7 @@ export default function CreateTestPage() {
         {showAIPanel && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
+            animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
           >
             <Card className="border-primary/30 bg-primary/5">
@@ -343,7 +409,9 @@ export default function CreateTestPage() {
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Brain className="w-5 h-5 text-primary" />
                   AI Question Generator
-                  <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full ml-2">Beta</span>
+                  <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full ml-2">
+                    Beta
+                  </span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -368,7 +436,9 @@ export default function CreateTestPage() {
                       min={1}
                       max={20}
                       value={aiQuestionCount}
-                      onChange={(e) => setAiQuestionCount(parseInt(e.target.value) || 5)}
+                      onChange={(e) =>
+                        setAiQuestionCount(parseInt(e.target.value) || 5)
+                      }
                     />
                   </div>
                   <div>
@@ -385,9 +455,36 @@ export default function CreateTestPage() {
                     </select>
                   </div>
                 </div>
-                <Button 
-                  variant="gradient" 
-                  onClick={handleAIGenerate} 
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>AI Provider</Label>
+                    <select
+                      value={aiProvider}
+                      onChange={(e) => setAiProvider(e.target.value)}
+                      className="w-full h-10 px-3 rounded-lg border bg-background"
+                    >
+                      <option value="openai">OpenAI (GPT-4)</option>
+                      <option value="google">Google (Gemini)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label>API Key (Optional)</Label>
+                    <Input
+                      type="password"
+                      value={aiApiKey}
+                      onChange={(e) => setAiApiKey(e.target.value)}
+                      placeholder={
+                        aiProvider === "openai" ? "sk-..." : "AIza..."
+                      }
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Leave empty to use server-configured key
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="gradient"
+                  onClick={handleAIGenerate}
                   disabled={aiGenerating || aiScript.length < 50}
                 >
                   {aiGenerating ? (
@@ -395,7 +492,7 @@ export default function CreateTestPage() {
                   ) : (
                     <Wand2 className="w-4 h-4 mr-2" />
                   )}
-                  {aiGenerating ? 'Generating...' : 'Generate Questions'}
+                  {aiGenerating ? "Generating..." : "Generate Questions"}
                 </Button>
               </CardContent>
             </Card>
@@ -408,7 +505,7 @@ export default function CreateTestPage() {
         {showImportPanel && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
+            animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
           >
             <Card className="border-info/30 bg-info/5">
@@ -428,12 +525,13 @@ export default function CreateTestPage() {
                     className="mt-1"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
-                    The form must be publicly accessible (Anyone with link can view)
+                    The form must be publicly accessible (Anyone with link can
+                    view)
                   </p>
                 </div>
-                <Button 
-                  variant="gradient" 
-                  onClick={handleGoogleFormsImport} 
+                <Button
+                  variant="gradient"
+                  onClick={handleGoogleFormsImport}
                   disabled={importing || !googleFormsUrl}
                 >
                   {importing ? (
@@ -441,7 +539,7 @@ export default function CreateTestPage() {
                   ) : (
                     <Import className="w-4 h-4 mr-2" />
                   )}
-                  {importing ? 'Importing...' : 'Import Questions'}
+                  {importing ? "Importing..." : "Import Questions"}
                 </Button>
               </CardContent>
             </Card>
@@ -449,7 +547,7 @@ export default function CreateTestPage() {
         )}
       </AnimatePresence>
 
-      <form onSubmit={handleSubmit((data) => onSubmit(data, 'published'))}>
+      <form onSubmit={handleSubmit((data) => onSubmit(data, "published"))}>
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Main Form */}
           <div className="lg:col-span-2 space-y-6">
@@ -466,7 +564,7 @@ export default function CreateTestPage() {
                   <Label htmlFor="title">Title *</Label>
                   <Input
                     id="title"
-                    {...register('title')}
+                    {...register("title")}
                     placeholder="e.g., Midterm Exam - Data Structures"
                     error={errors.title?.message}
                   />
@@ -475,7 +573,7 @@ export default function CreateTestPage() {
                   <Label htmlFor="description">Description</Label>
                   <Textarea
                     id="description"
-                    {...register('description')}
+                    {...register("description")}
                     placeholder="Test instructions and guidelines..."
                     rows={3}
                   />
@@ -498,7 +596,7 @@ export default function CreateTestPage() {
                     id="durationMinutes"
                     type="number"
                     min={5}
-                    {...register('durationMinutes', { valueAsNumber: true })}
+                    {...register("durationMinutes", { valueAsNumber: true })}
                     error={errors.durationMinutes?.message}
                   />
                 </div>
@@ -507,7 +605,7 @@ export default function CreateTestPage() {
                   <Input
                     id="startAt"
                     type="datetime-local"
-                    {...register('startAt')}
+                    {...register("startAt")}
                     error={errors.startAt?.message}
                   />
                 </div>
@@ -516,7 +614,7 @@ export default function CreateTestPage() {
                   <Input
                     id="endAt"
                     type="datetime-local"
-                    {...register('endAt')}
+                    {...register("endAt")}
                     error={errors.endAt?.message}
                   />
                 </div>
@@ -536,7 +634,9 @@ export default function CreateTestPage() {
                     size="sm"
                     onClick={() => {
                       append({ ...defaultQuestion });
-                      setExpandedQuestions(prev => new Set([...prev, fields.length]));
+                      setExpandedQuestions(
+                        (prev) => new Set([...prev, fields.length]),
+                      );
                     }}
                   >
                     <Plus className="w-4 h-4 mr-1" />
@@ -554,7 +654,7 @@ export default function CreateTestPage() {
                       <GripVertical className="w-4 h-4 text-muted-foreground" />
                       <span className="font-medium">Q{index + 1}</span>
                       <span className="text-sm text-muted-foreground flex-1 truncate">
-                        {watchQuestions?.[index]?.prompt || 'New question...'}
+                        {watchQuestions?.[index]?.prompt || "New question..."}
                       </span>
                       <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded">
                         {watchQuestions?.[index]?.maxMarks || 0} marks
@@ -570,7 +670,7 @@ export default function CreateTestPage() {
                       {expandedQuestions.has(index) && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
+                          animate={{ opacity: 1, height: "auto" }}
                           exit={{ opacity: 0, height: 0 }}
                         >
                           <CardContent className="border-t pt-4 space-y-4">
@@ -578,11 +678,17 @@ export default function CreateTestPage() {
                               <div>
                                 <Label>Question Type</Label>
                                 <select
-                                  {...register(`questions.${index}.type` as const)}
+                                  {...register(
+                                    `questions.${index}.type` as const,
+                                  )}
                                   className="w-full h-10 px-3 rounded-lg border bg-background"
                                 >
-                                  <option value="mcq_single">MCQ (Single Answer)</option>
-                                  <option value="mcq_multi">MCQ (Multiple Answers)</option>
+                                  <option value="mcq_single">
+                                    MCQ (Single Answer)
+                                  </option>
+                                  <option value="mcq_multi">
+                                    MCQ (Multiple Answers)
+                                  </option>
                                   <option value="short">Short Answer</option>
                                   <option value="long">Long Answer</option>
                                 </select>
@@ -592,7 +698,10 @@ export default function CreateTestPage() {
                                 <Input
                                   type="number"
                                   min={1}
-                                  {...register(`questions.${index}.maxMarks` as const, { valueAsNumber: true })}
+                                  {...register(
+                                    `questions.${index}.maxMarks` as const,
+                                    { valueAsNumber: true },
+                                  )}
                                 />
                               </div>
                             </div>
@@ -600,41 +709,68 @@ export default function CreateTestPage() {
                             <div>
                               <Label>Question *</Label>
                               <Textarea
-                                {...register(`questions.${index}.prompt` as const)}
+                                {...register(
+                                  `questions.${index}.prompt` as const,
+                                )}
                                 placeholder="Enter your question..."
                                 rows={2}
                               />
                             </div>
 
                             {/* Options for MCQ */}
-                            {(watchQuestions?.[index]?.type === 'mcq_single' ||
-                              watchQuestions?.[index]?.type === 'mcq_multi') && (
+                            {(watchQuestions?.[index]?.type === "mcq_single" ||
+                              watchQuestions?.[index]?.type ===
+                                "mcq_multi") && (
                               <div className="space-y-2">
                                 <Label>Options</Label>
-                                {['A', 'B', 'C', 'D'].map((opt, optIndex) => (
-                                  <div key={opt} className="flex items-center gap-2">
+                                {["A", "B", "C", "D"].map((opt, optIndex) => (
+                                  <div
+                                    key={opt}
+                                    className="flex items-center gap-2"
+                                  >
                                     <input
-                                      type={watchQuestions?.[index]?.type === 'mcq_single' ? 'radio' : 'checkbox'}
+                                      type={
+                                        watchQuestions?.[index]?.type ===
+                                        "mcq_single"
+                                          ? "radio"
+                                          : "checkbox"
+                                      }
                                       name={`questions.${index}.correctAnswer`}
                                       value={opt}
-                                      checked={watchQuestions?.[index]?.correctAnswer?.includes(opt)}
+                                      checked={watchQuestions?.[
+                                        index
+                                      ]?.correctAnswer?.includes(opt)}
                                       onChange={(e) => {
-                                        const current = watchQuestions?.[index]?.correctAnswer || [];
+                                        const current =
+                                          watchQuestions?.[index]
+                                            ?.correctAnswer || [];
                                         let updated;
-                                        if (watchQuestions?.[index]?.type === 'mcq_single') {
+                                        if (
+                                          watchQuestions?.[index]?.type ===
+                                          "mcq_single"
+                                        ) {
                                           updated = [opt];
                                         } else {
                                           updated = e.target.checked
                                             ? [...current, opt]
-                                            : current.filter((c: string) => c !== opt);
+                                            : current.filter(
+                                                (c: string) => c !== opt,
+                                              );
                                         }
-                                        setValue(`questions.${index}.correctAnswer`, updated);
+                                        setValue(
+                                          `questions.${index}.correctAnswer`,
+                                          updated,
+                                        );
                                       }}
                                       className="w-4 h-4"
                                     />
-                                    <span className="font-medium w-6">{opt}.</span>
+                                    <span className="font-medium w-6">
+                                      {opt}.
+                                    </span>
                                     <Input
-                                      {...register(`questions.${index}.options.${optIndex}.text` as const)}
+                                      {...register(
+                                        `questions.${index}.options.${optIndex}.text` as const,
+                                      )}
                                       placeholder={`Option ${opt}`}
                                       className="flex-1"
                                     />
@@ -683,7 +819,9 @@ export default function CreateTestPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Duration</span>
-                  <span className="font-medium">{watch('durationMinutes')} min</span>
+                  <span className="font-medium">
+                    {watch("durationMinutes")} min
+                  </span>
                 </div>
 
                 <hr className="my-4" />
@@ -700,17 +838,21 @@ export default function CreateTestPage() {
                       type="number"
                       min={1}
                       max={5}
-                      {...register('evaluatorsPerSubmission', { valueAsNumber: true })}
+                      {...register("evaluatorsPerSubmission", {
+                        valueAsNumber: true,
+                      })}
                     />
                   </div>
                   <div className="flex items-center gap-2">
                     <input
                       type="checkbox"
                       id="sameBatchOnly"
-                      {...register('sameBatchOnly')}
+                      {...register("sameBatchOnly")}
                       className="w-4 h-4"
                     />
-                    <Label htmlFor="sameBatchOnly" className="cursor-pointer">Same batch only</Label>
+                    <Label htmlFor="sameBatchOnly" className="cursor-pointer">
+                      Same batch only
+                    </Label>
                   </div>
                 </div>
 
@@ -721,7 +863,7 @@ export default function CreateTestPage() {
                     type="button"
                     variant="outline"
                     className="w-full"
-                    onClick={handleSubmit((data) => onSubmit(data, 'draft'))}
+                    onClick={handleSubmit((data) => onSubmit(data, "draft"))}
                     disabled={isSubmitting}
                   >
                     <Save className="w-4 h-4 mr-2" />
