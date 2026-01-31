@@ -1,9 +1,18 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { createClient } from '@/lib/supabase/server';
-import { formatDate } from '@/lib/utils';
-import { CheckCircle, Clock, FileText, MessageSquare, User, XCircle } from 'lucide-react';
-import { notFound } from 'next/navigation';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { createClient } from "@/lib/supabase/server";
+import { formatDate } from "@/lib/utils";
+import {
+  CheckCircle,
+  Clock,
+  FileText,
+  MessageSquare,
+  User,
+  XCircle,
+} from "lucide-react";
+import { notFound } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 
 interface ResultsPageProps {
   params: { attemptId: string };
@@ -11,20 +20,22 @@ interface ResultsPageProps {
 
 export default async function ResultsPage({ params }: ResultsPageProps) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('user_id', user!.id)
+    .from("profiles")
+    .select("*")
+    .eq("user_id", user!.id)
     .single();
 
   // Get attempt with test and responses
   const { data: attempt } = await supabase
-    .from('attempts')
-    .select('*, test:tests(*)')
-    .eq('id', params.attemptId)
-    .eq('student_id', profile!.id)
+    .from("attempts")
+    .select("*, test:tests(*)")
+    .eq("id", params.attemptId)
+    .eq("student_id", profile!.id)
     .single();
 
   if (!attempt) {
@@ -33,30 +44,37 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
 
   // Get questions
   const { data: questions } = await supabase
-    .from('questions')
-    .select('*')
-    .eq('test_id', attempt.test_id)
-    .order('order_num');
+    .from("questions")
+    .select("*")
+    .eq("test_id", attempt.test_id)
+    .order("order_num");
 
   // Get responses
   const { data: responses } = await supabase
-    .from('responses')
-    .select('*')
-    .eq('attempt_id', attempt.id);
+    .from("responses")
+    .select("*")
+    .eq("attempt_id", attempt.id);
 
   // Get evaluations for this attempt
   const { data: allocations } = await supabase
-    .from('allocations')
-    .select('*, evaluation:evaluations(*)')
-    .eq('attempt_id', attempt.id)
-    .eq('status', 'completed');
+    .from("allocations")
+    .select("*, evaluation:evaluations(*)")
+    .eq("attempt_id", attempt.id)
+    .eq("status", "completed");
 
-  const evaluations = allocations?.map(a => a.evaluation).filter(Boolean) || [];
-  const avgScore = evaluations.length > 0 
-    ? Math.round(evaluations.reduce((sum, e) => sum + (e?.total_score || 0), 0) / evaluations.length)
-    : null;
+  const evaluations =
+    allocations?.map((a) => a.evaluation).filter(Boolean) || [];
+  const avgScore =
+    evaluations.length > 0
+      ? Math.round(
+          evaluations.reduce((sum, e) => sum + (e?.total_score || 0), 0) /
+            evaluations.length,
+        )
+      : null;
 
-  const responsesByQuestion = new Map(responses?.map(r => [r.question_id, r]));
+  const responsesByQuestion = new Map(
+    responses?.map((r) => [r.question_id, r]),
+  );
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -65,9 +83,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
         <h1 className="text-3xl font-bold tracking-tight">
           Test <span className="text-gradient">Results</span>
         </h1>
-        <p className="text-muted-foreground mt-1">
-          {attempt.test?.title}
-        </p>
+        <p className="text-muted-foreground mt-1">{attempt.test?.title}</p>
       </div>
 
       {/* Summary Card */}
@@ -77,20 +93,28 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
             <div>
               <p className="text-sm text-muted-foreground">Status</p>
               <p className="text-lg font-semibold flex items-center gap-2">
-                {attempt.status === 'evaluated' ? (
-                  <><CheckCircle className="w-5 h-5 text-success" /> Evaluated</>
+                {attempt.status === "evaluated" ? (
+                  <>
+                    <CheckCircle className="w-5 h-5 text-success" /> Evaluated
+                  </>
                 ) : (
-                  <><Clock className="w-5 h-5 text-warning" /> Pending</>
+                  <>
+                    <Clock className="w-5 h-5 text-warning" /> Pending
+                  </>
                 )}
               </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Submitted</p>
               <p className="text-lg font-semibold">
-                {attempt.submitted_at 
-                  ? formatDate(attempt.submitted_at, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-                  : 'Not submitted'
-                }
+                {attempt.submitted_at
+                  ? formatDate(attempt.submitted_at, {
+                      month: "short",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "Not submitted"}
               </p>
             </div>
             <div>
@@ -102,7 +126,9 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
             <div>
               <p className="text-sm text-muted-foreground">Score</p>
               <p className="text-2xl font-bold text-gradient">
-                {avgScore !== null ? `${avgScore}/${attempt.test?.total_marks}` : 'Pending'}
+                {avgScore !== null
+                  ? `${avgScore}/${attempt.test?.total_marks}`
+                  : "Pending"}
               </p>
             </div>
           </div>
@@ -111,11 +137,22 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
             <div className="mt-6">
               <div className="flex justify-between text-sm mb-2">
                 <span>Score</span>
-                <span>{Math.round((avgScore / (attempt.test?.total_marks || 1)) * 100)}%</span>
+                <span>
+                  {Math.round(
+                    (avgScore / (attempt.test?.total_marks || 1)) * 100,
+                  )}
+                  %
+                </span>
               </div>
-              <Progress 
-                value={(avgScore / (attempt.test?.total_marks || 1)) * 100} 
-                variant={avgScore >= 80 ? 'success' : avgScore >= 60 ? 'warning' : 'default'}
+              <Progress
+                value={(avgScore / (attempt.test?.total_marks || 1)) * 100}
+                variant={
+                  avgScore >= 80
+                    ? "success"
+                    : avgScore >= 60
+                      ? "warning"
+                      : "default"
+                }
               />
             </div>
           )}
@@ -142,7 +179,9 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
               {attempt.paste_attempts > 0 && (
                 <div>
                   <p className="text-2xl font-bold">{attempt.paste_attempts}</p>
-                  <p className="text-sm text-muted-foreground">Paste attempts</p>
+                  <p className="text-sm text-muted-foreground">
+                    Paste attempts
+                  </p>
                 </div>
               )}
             </div>
@@ -161,7 +200,10 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             {evaluations.map((evaluation, index) => (
-              <div key={evaluation?.id || index} className="p-4 rounded-lg bg-muted/50">
+              <div
+                key={evaluation?.id || index}
+                className="p-4 rounded-lg bg-muted/50"
+              >
                 <div className="flex items-center justify-between mb-2">
                   <span className="flex items-center gap-2 text-sm">
                     <User className="w-4 h-4" />
@@ -202,7 +244,8 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                   <div className="flex-1">
                     <p className="font-medium">{question.prompt}</p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {question.type.replace('_', ' ')} • {question.max_marks} marks
+                      {question.type.replace("_", " ")} • {question.max_marks}{" "}
+                      marks
                     </p>
                   </div>
                 </div>
@@ -213,10 +256,13 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                     </p>
                   ) : response?.selected_options ? (
                     <p className="text-sm bg-background p-3 rounded-lg">
-                      Selected: {(response.selected_options as string[]).join(', ')}
+                      Selected:{" "}
+                      {(response.selected_options as string[]).join(", ")}
                     </p>
                   ) : (
-                    <p className="text-sm text-muted-foreground italic">No answer provided</p>
+                    <p className="text-sm text-muted-foreground italic">
+                      No answer provided
+                    </p>
                   )}
                 </div>
               </div>
