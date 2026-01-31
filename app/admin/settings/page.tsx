@@ -5,7 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Database, Loader2, Mail, Save, Settings, Shield } from "lucide-react";
+import {
+  Database,
+  Loader2,
+  Mail,
+  Save,
+  Settings,
+  Shield,
+  Smartphone,
+} from "lucide-react";
 import { useState } from "react";
 
 export default function AdminSettingsPage() {

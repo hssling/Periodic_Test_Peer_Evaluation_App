@@ -1,10 +1,8 @@
 import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { TopNav } from "@/components/layout/top-nav";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorBoundaryUI } from "@/components/shared/error-boundary-ui";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/supabase";
-import { AlertTriangle, Home, RefreshCw } from "lucide-react";
 import { redirect } from "next/navigation";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
@@ -100,36 +98,11 @@ export default async function AdminLayout({
 
     console.error("Critical Layout Error:", criticalError);
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-slate-900">
-        <Card className="max-w-md bg-slate-800 border-slate-700 text-white">
-          <CardHeader className="text-center">
-            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <CardTitle>Administration Error</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-center">
-            <p className="text-slate-400">
-              A critical error occurred while loading the administration area.
-            </p>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1 bg-slate-700"
-                onClick={() => window.location.reload()}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Retry
-              </Button>
-              <Button
-                className="flex-1 bg-blue-600"
-                onClick={() => (window.location.href = "/")}
-              >
-                <Home className="w-4 h-4 mr-2" />
-                Go Home
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <ErrorBoundaryUI
+        variant="admin"
+        title="Administration Error"
+        message="A critical error occurred while loading the administration area."
+      />
     );
   }
 }

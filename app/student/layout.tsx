@@ -1,9 +1,7 @@
 import { StudentSidebar } from "@/components/layout/student-sidebar";
 import { TopNav } from "@/components/layout/top-nav";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorBoundaryUI } from "@/components/shared/error-boundary-ui";
 import { createClient } from "@/lib/supabase/server";
-import { AlertTriangle, Home, RefreshCw } from "lucide-react";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -102,36 +100,11 @@ export default async function StudentLayout({
 
     console.error("Critical Student Layout Error:", criticalError);
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-        <Card className="max-w-md w-full border-destructive/50 bg-destructive/5">
-          <CardHeader className="text-center">
-            <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
-            <CardTitle>Application Error</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-center">
-            <p className="text-muted-foreground">
-              A critical error occurred while loading your student dashboard.
-            </p>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                className="flex-1"
-                onClick={() => window.location.reload()}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Retry
-              </Button>
-              <Button
-                className="flex-1"
-                onClick={() => (window.location.href = "/")}
-              >
-                <Home className="w-4 h-4 mr-2" />
-                Go Home
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <ErrorBoundaryUI
+        variant="student"
+        title="Application Error"
+        message="A critical error occurred while loading your student dashboard."
+      />
     );
   }
 }

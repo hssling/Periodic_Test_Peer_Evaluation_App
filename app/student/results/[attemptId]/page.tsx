@@ -120,7 +120,9 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
             <div>
               <p className="text-sm text-muted-foreground">Time Spent</p>
               <p className="text-lg font-semibold">
-                {Math.floor((attempt.time_spent_seconds || 0) / 60)} min
+                {attempt.time_spent_seconds >= 60
+                  ? `${Math.floor(attempt.time_spent_seconds / 60)} min`
+                  : `${attempt.time_spent_seconds || 0} sec`}
               </p>
             </div>
             <div>
