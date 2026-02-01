@@ -18,7 +18,8 @@ export default async function AdminAuditLogsPage({
   searchParams?: { page?: string };
 }) {
   const supabase = await createClient();
-  const page = Math.max(1, Number(searchParams?.page || 1));
+  const parsedPage = Number(searchParams?.page);
+  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const pageSize = 25;
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;

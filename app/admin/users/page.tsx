@@ -15,7 +15,8 @@ export default async function AdminUsersPage({
   const supabase = await createClient();
   const selectedBatch = searchParams.batch;
   const searchQuery = searchParams.q?.trim();
-  const page = Math.max(1, Number(searchParams.page || 1));
+  const parsedPage = Number(searchParams.page);
+  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const pageSize = 20;
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
@@ -24,10 +25,21 @@ export default async function AdminUsersPage({
     .from("profiles")
     .select("role, batch, is_active", { count: "exact" });
 
-  const { data: statsRows, count: totalUsers } = (await statsQuery) as {
+  const {
+    data: statsRows,
+    count: totalUsers,
+    error: statsError,
+  } = (await statsQuery) as {
     data: Pick<Profile, "role" | "batch" | "is_active">[] | null;
     count: number | null;
+    error: any;
   };
+
+  if (statsError) {
+    return (
+      <ErrorState message="Could not load user statistics. Please try again." />
+    );
+  }
 
   const allStudents = (statsRows || []).filter(
     (p) => p.role === "student",
@@ -57,10 +69,17 @@ export default async function AdminUsersPage({
     profilesQuery = profilesQuery.eq("batch", selectedBatch);
   }
 
-  const { data: profiles, count } = (await profilesQuery) as {
+  const { data: profiles, count, error: profilesError } = (await profilesQuery) as {
     data: Profile[] | null;
     count: number | null;
+    error: any;
   };
+
+  if (profilesError) {
+    return (
+      <ErrorState message="Could not load users. Please check database connectivity." />
+    );
+  }
 
   const students = (profiles || []).filter((p: Profile) => p.role === "student");
   const totalRows = count || 0;
@@ -355,5 +374,19 @@ export default async function AdminUsersPage({
         </div>
       )}
     </div>
+  );
+}
+
+function ErrorState({ message }: { message: string }) {
+  return (
+    <Card className="border-destructive/50 bg-destructive/5">
+      <CardContent className="py-12 text-center">
+        <Users className="w-12 h-12 text-destructive mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-destructive">
+          Error Loading Users
+        </h3>
+        <p className="text-muted-foreground mt-2">{message}</p>
+      </CardContent>
+    </Card>
   );
 }

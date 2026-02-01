@@ -12,7 +12,8 @@ export default async function AdminEvaluationsPage({
   searchParams?: { page?: string; status?: string };
 }) {
   const supabase = await createClient();
-  const page = Math.max(1, Number(searchParams?.page || 1));
+  const parsedPage = Number(searchParams?.page);
+  const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1;
   const pageSize = 20;
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
