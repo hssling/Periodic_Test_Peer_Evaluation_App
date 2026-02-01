@@ -41,9 +41,7 @@ export default async function AdminUsersPage({
     );
   }
 
-  const allStudents = (statsRows || []).filter(
-    (p) => p.role === "student",
-  );
+  const allStudents = (statsRows || []).filter((p) => p.role === "student");
   const admins = (statsRows || []).filter(
     (p) => p.role === "admin" || p.role === "faculty",
   );
@@ -208,18 +206,21 @@ export default async function AdminUsersPage({
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {admins.map((user: Profile) => (
+            {admins.map((user: Profile) => {
+              const name = user.name?.trim() || user.email || "User";
+              const initial = name.charAt(0).toUpperCase();
+              return (
               <div
                 key={user.id}
                 className="flex items-center gap-4 p-4 rounded-xl bg-muted/30 border border-transparent hover:border-primary/20 transition-all duration-200"
               >
                 <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                  {user.name[0].toUpperCase()}
+                  {initial}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold truncate">{user.name}</p>
+                  <p className="font-semibold truncate">{name}</p>
                   <p className="text-xs text-muted-foreground truncate uppercase tracking-wider">
-                    {user.role}
+                    {user.role || "admin"}
                   </p>
                 </div>
                 <div
@@ -230,7 +231,7 @@ export default async function AdminUsersPage({
                   }`}
                 />
               </div>
-            ))}
+            )})}
           </div>
           {admins.length === 0 && (
             <p className="text-center text-muted-foreground py-4">
@@ -283,7 +284,10 @@ export default async function AdminUsersPage({
                   </tr>
                 </thead>
                 <tbody className="divide-y border-t">
-                  {students.map((user: Profile) => (
+                  {students.map((user: Profile) => {
+                    const name = user.name?.trim() || user.email || "Student";
+                    const initial = name.charAt(0).toUpperCase();
+                    return (
                     <tr
                       key={user.id}
                       className="hover:bg-primary/5 transition-colors group"
@@ -291,16 +295,18 @@ export default async function AdminUsersPage({
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold group-hover:scale-110 transition-transform">
-                            {user.name[0].toUpperCase()}
+                            {initial}
                           </div>
                           <span className="font-semibold text-foreground">
-                            {user.name}
+                            {name}
                           </span>
                         </div>
                       </td>
                       <td className="py-4 px-6 hidden sm:table-cell">
                         <div className="flex flex-col">
-                          <span className="text-foreground">{user.email}</span>
+                          <span className="text-foreground">
+                            {user.email || "-"}
+                          </span>
                         </div>
                       </td>
                       <td className="py-4 px-6 hidden md:table-cell font-mono text-muted-foreground">
@@ -335,7 +341,7 @@ export default async function AdminUsersPage({
                         </span>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
