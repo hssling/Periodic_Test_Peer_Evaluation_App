@@ -2,19 +2,30 @@ import { NextResponse } from "next/server";
 
 // Health check endpoint to diagnose configuration issues
 export async function GET() {
+  const supabaseUrl =
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "";
+  const supabaseAnonKey =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    "";
+
   const diagnostics = {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     supabase: {
       url: {
-        set: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
-        valid: process.env.NEXT_PUBLIC_SUPABASE_URL?.startsWith("https://"),
-        preview: process.env.NEXT_PUBLIC_SUPABASE_URL?.substring(0, 40) + "...",
+        set: !!supabaseUrl,
+        valid: supabaseUrl?.startsWith("https://"),
+        preview: supabaseUrl ? supabaseUrl.substring(0, 40) + "..." : "not set",
+        source: process.env.NEXT_PUBLIC_SUPABASE_URL ? "next_public" : "server",
       },
       anonKey: {
-        set: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-        valid: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.startsWith("eyJ"),
-        length: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.length || 0,
+        set: !!supabaseAnonKey,
+        valid: supabaseAnonKey?.startsWith("eyJ"),
+        length: supabaseAnonKey?.length || 0,
+        source: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+          ? "next_public"
+          : "server",
       },
     },
     appUrl: {

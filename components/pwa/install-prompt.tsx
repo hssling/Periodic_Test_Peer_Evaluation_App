@@ -11,8 +11,6 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function InstallPrompt() {
-  const [deferredPrompt, setDeferredPrompt] =
-    useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
@@ -40,20 +38,6 @@ export function InstallPrompt() {
       }
     }
 
-    // Listen for beforeinstallprompt event
-    const handleBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      // Show prompt after 3 seconds on the page
-      setTimeout(() => {
-        if (!dismissed) {
-          setShowPrompt(true);
-        }
-      }, 3000);
-    };
-
-    window.addEventListener("beforeinstallprompt", handleBeforeInstall);
-
     // Show iOS prompt after delay if on iOS and not installed
     if (iOS && !isAppInstalled && !dismissed) {
       setTimeout(() => {
@@ -61,22 +45,8 @@ export function InstallPrompt() {
       }, 5000);
     }
 
-    return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
-    };
+    return () => {};
   }, [dismissed]);
-
-  const handleInstall = async () => {
-    if (deferredPrompt) {
-      await deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === "accepted") {
-        setShowPrompt(false);
-        setDeferredPrompt(null);
-      }
-    }
-  };
-
   const handleDismiss = () => {
     setShowPrompt(false);
     setDismissed(true);
@@ -164,18 +134,13 @@ export function InstallPrompt() {
                         Install Periodic Test App
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Access tests offline, get notifications, and enjoy a
-                        native app experience.
+                        Use your browser install banner or menu to add this app.
                       </p>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     <Button variant="outline" onClick={handleDismiss}>
-                      Not now
-                    </Button>
-                    <Button variant="gradient" onClick={handleInstall}>
-                      <Download className="w-4 h-4 mr-2" />
-                      Install
+                      Got it
                     </Button>
                   </div>
                 </div>
@@ -247,7 +212,7 @@ export function InstallButton() {
     return (
       <Button variant="outline" disabled className="w-full">
         <Download className="w-4 h-4 mr-2" />
-        App Installed ✓
+        App Installed
       </Button>
     );
   }
@@ -257,7 +222,7 @@ export function InstallButton() {
       <div className="p-4 bg-muted/50 rounded-lg text-center">
         <p className="text-sm text-muted-foreground mb-2">To install on iOS:</p>
         <p className="text-sm">
-          Tap <Share className="w-4 h-4 inline" /> → &quot;Add to Home Screen&quot;
+          Tap <Share className="w-4 h-4 inline" /> -> &quot;Add to Home Screen&quot;
         </p>
       </div>
     );
