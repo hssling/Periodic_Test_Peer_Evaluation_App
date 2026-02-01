@@ -56,3 +56,6 @@ sw.js.map
 # Misc
 *.log
 .cache
+
+# Local Netlify folder
+.netlify
