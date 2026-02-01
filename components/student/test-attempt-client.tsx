@@ -11,7 +11,7 @@ import {
   Shield,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ConfirmSubmitDialog } from "@/components/test/confirm-submit-dialog";
 import { QuestionRenderer } from "@/components/test/question-renderer";
@@ -70,6 +70,10 @@ export function TestAttemptClient({
     tabSwitches: attempt.tab_switches || 0,
     pasteAttempts: attempt.paste_attempts || 0,
   });
+  const baseViolations = useMemo(
+    () => (Array.isArray(attempt.violations) ? attempt.violations : []),
+    [attempt.violations],
+  );
 
   // Refs for tracking
   const saveTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
@@ -82,68 +86,15 @@ export function TestAttemptClient({
       responses[qId]?.answer_text || responses[qId]?.selected_options?.length,
   ).length;
 
-  // Timer effect
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleAutoSubmit();
-          return 0;
-        }
-        return prev - 1;
-      });
-
-      // Update time spent
-      timeSpentRef.current += 1;
-
-      // Sync time spent every 30 seconds
-      if (timeSpentRef.current % 30 === 0) {
-        supabase
-          .from("attempts")
-          .update({ time_spent_seconds: timeSpentRef.current })
-          .eq("id", attempt.id);
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, []);
-
-  // Tab visibility tracking
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden) {
-        setViolations((prev) => {
-          const newCount = prev.tabSwitches + 1;
-          // Log violation
-          supabase
-            .from("attempts")
-            .update({
-              tab_switches: newCount,
-              violations: [
-                ...(Array.isArray(attempt.violations)
-                  ? attempt.violations
-                  : []),
-                { type: "tab_switch", timestamp: new Date().toISOString() },
-              ],
-            })
-            .eq("id", attempt.id);
-
-          toast({
-            variant: "warning",
-            title: "Tab switch detected",
-            description: `You have switched tabs ${newCount} time(s). This is being recorded.`,
-          });
-
-          return { ...prev, tabSwitches: newCount };
-        });
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () =>
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
+  // Auto-submit when time runs out
+  const handleAutoSubmit = useCallback(async () => {
+    toast({
+      variant: "warning",
+      title: "Time is up!",
+      description: "Your test is being submitted automatically.",
+    });
+    await handleSubmit();
+  }, [handleSubmit, toast]);
 
   // Save response
   const saveResponse = useCallback(
@@ -202,7 +153,7 @@ export function TestAttemptClient({
         .update({
           paste_attempts: newCount,
           violations: [
-            ...(attempt.violations as any[]),
+            ...baseViolations,
             { type: "paste_attempt", timestamp: new Date().toISOString() },
           ],
         })
@@ -217,20 +168,10 @@ export function TestAttemptClient({
 
       return { ...prev, pasteAttempts: newCount };
     });
-  }, []);
-
-  // Auto-submit when time runs out
-  const handleAutoSubmit = async () => {
-    toast({
-      variant: "warning",
-      title: "Time is up!",
-      description: "Your test is being submitted automatically.",
-    });
-    await handleSubmit();
-  };
+  }, [attempt.id, baseViolations, supabase, toast]);
 
   // Submit test
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (isSubmitting) return;
 
     // Clear all pending save timeouts to prevent race conditions
@@ -283,7 +224,68 @@ export function TestAttemptClient({
       setIsSubmitting(false);
       setShowSubmitDialog(false);
     }
-  };
+  }, [attempt.id, isSubmitting, router, supabase, toast]);
+
+  // Timer effect
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          handleAutoSubmit();
+          return 0;
+        }
+        return prev - 1;
+      });
+
+      // Update time spent
+      timeSpentRef.current += 1;
+
+      // Sync time spent every 30 seconds
+      if (timeSpentRef.current % 30 === 0) {
+        supabase
+          .from("attempts")
+          .update({ time_spent_seconds: timeSpentRef.current })
+          .eq("id", attempt.id);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [attempt.id, handleAutoSubmit, supabase]);
+
+  // Tab visibility tracking
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setViolations((prev) => {
+          const newCount = prev.tabSwitches + 1;
+          // Log violation
+          supabase
+            .from("attempts")
+            .update({
+              tab_switches: newCount,
+              violations: [
+                ...baseViolations,
+                { type: "tab_switch", timestamp: new Date().toISOString() },
+              ],
+            })
+            .eq("id", attempt.id);
+
+          toast({
+            variant: "warning",
+            title: "Tab switch detected",
+            description: `You have switched tabs ${newCount} time(s). This is being recorded.`,
+          });
+
+          return { ...prev, tabSwitches: newCount };
+        });
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [attempt.id, baseViolations, supabase, toast]);
 
   // Get timer color
   const getTimerColor = () => {

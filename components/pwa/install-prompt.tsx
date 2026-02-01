@@ -141,7 +141,7 @@ export function InstallPrompt() {
                   <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                     <Download className="w-5 h-5 text-primary" />
                     <span className="text-sm">
-                      Select <strong>"Add to Home Screen"</strong>
+                      Select <strong>&quot;Add to Home Screen&quot;</strong>
                     </span>
                   </div>
                   <Button
@@ -257,7 +257,7 @@ export function InstallButton() {
       <div className="p-4 bg-muted/50 rounded-lg text-center">
         <p className="text-sm text-muted-foreground mb-2">To install on iOS:</p>
         <p className="text-sm">
-          Tap <Share className="w-4 h-4 inline" /> → "Add to Home Screen"
+          Tap <Share className="w-4 h-4 inline" /> → &quot;Add to Home Screen&quot;
         </p>
       </div>
     );

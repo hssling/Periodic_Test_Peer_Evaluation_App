@@ -244,7 +244,7 @@ export default async function StudentTestsPage() {
             <FileText className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">No Tests Available</h3>
             <p className="text-muted-foreground">
-              You don't have any tests assigned yet. Check back later.
+              You don&apos;t have any tests assigned yet. Check back later.
             </p>
           </CardContent>
         </Card>

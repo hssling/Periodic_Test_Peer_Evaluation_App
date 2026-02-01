@@ -10,7 +10,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import { ArrowLeft, Clock, FileText, Loader2, Save, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 export default function AdminTestEditPage({
   params,
@@ -24,11 +24,7 @@ export default function AdminTestEditPage({
   const [saving, setSaving] = useState(false);
   const [test, setTest] = useState<any>(null);
 
-  useEffect(() => {
-    fetchTest();
-  }, [params.id]);
-
-  const fetchTest = async () => {
+  const fetchTest = useCallback(async () => {
     const { data, error } = await supabase
       .from("tests")
       .select("*")
@@ -48,7 +44,11 @@ export default function AdminTestEditPage({
 
     setTest(testData);
     setLoading(false);
-  };
+  }, [params.id, router, supabase, toast]);
+
+  useEffect(() => {
+    fetchTest();
+  }, [fetchTest]);
 
   const handleSave = async () => {
     if (!test.title) {

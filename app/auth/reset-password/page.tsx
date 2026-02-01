@@ -111,7 +111,7 @@ export default function ResetPasswordPage() {
                     Password reset email sent!
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">
-                    If you don't see it, check your spam folder.
+                    If you don&apos;t see it, check your spam folder.
                   </p>
                 </div>
                 <Link href="/auth/login">

@@ -154,7 +154,7 @@ export default async function StudentDashboardPage() {
           Welcome back, <span className="text-gradient">{displayName}</span>
         </h1>
         <p className="text-muted-foreground mt-1">
-          Here's what's happening with your tests and evaluations.
+          Here&apos;s what&apos;s happening with your tests and evaluations.
         </p>
       </div>
 

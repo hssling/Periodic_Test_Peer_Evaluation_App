@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 
 type Test = Database["public"]["Tables"]["tests"]["Row"];
@@ -33,45 +34,38 @@ export default async function AdminDashboardPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Get profile
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("user_id", user!.id)
-    .single();
+  if (!user) {
+    redirect("/auth/login");
+  }
 
-  // Get all tests
-  const { data: testsData } = await supabase
-    .from("tests")
-    .select("*")
-    .order("created_at", { ascending: false });
-  const tests = (testsData || []) as Test[];
+  const [
+    testsRes,
+    studentsRes,
+    attemptsRes,
+    pendingAllocationsRes,
+  ] = await Promise.all([
+    supabase
+      .from("tests")
+      .select(
+        "id, title, status, start_at, end_at, total_marks, duration_minutes, created_at",
+      )
+      .order("created_at", { ascending: false }),
+    supabase.from("profiles").select("id").eq("role", "student"),
+    supabase
+      .from("attempts")
+      .select("*, test:tests(*), student:profiles(*)")
+      .order("created_at", { ascending: false })
+      .limit(10),
+    supabase
+      .from("allocations")
+      .select("*", { count: "exact", head: true })
+      .eq("status", "pending"),
+  ]);
 
-  // Get all profiles (students)
-  const { data: students } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("role", "student");
-
-  // Get recent attempts
-  const { data: attemptsData } = await supabase
-    .from("attempts")
-    .select("*, test:tests(*), student:profiles(*)")
-    .order("created_at", { ascending: false })
-    .limit(10);
-  const recentAttempts = (attemptsData || []) as Attempt[];
-
-  // Get pending allocations
-  const { data: pendingAllocations } = await supabase
-    .from("allocations")
-    .select("*, attempt:attempts(*, test:tests(*), student:profiles(*))")
-    .eq("status", "pending");
-
-  // Get totals for stats
-  const { count: submittedTotal } = await supabase
-    .from("attempts")
-    .select("*", { count: "exact", head: true })
-    .in("status", ["submitted", "evaluated"]);
+  const tests = (testsRes.data || []) as Test[];
+  const students = studentsRes.data || [];
+  const recentAttempts = (attemptsRes.data || []) as Attempt[];
+  const pendingAllocations = pendingAllocationsRes.count || 0;
 
   // Calculate stats
   const totalTests = tests.length;
@@ -79,8 +73,7 @@ export default async function AdminDashboardPage() {
     (t) => getTestStatus(t.start_at, t.end_at, t.status) === "active",
   ).length;
   const totalStudents = students?.length || 0;
-  const pendingEvaluations = pendingAllocations?.length || 0;
-  const submittedAttempts = submittedTotal || 0;
+  const pendingEvaluations = pendingAllocations;
 
   const stats = [
     {
@@ -355,7 +348,7 @@ export default async function AdminDashboardPage() {
                   <span>View Analytics</span>
                 </Button>
               </Link>
-              <Link href="/admin/announcements/new">
+              <Link href="/admin/announcements?create=1">
                 <Button
                   variant="outline"
                   className="w-full h-auto flex-col py-6 gap-2"

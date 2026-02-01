@@ -9,11 +9,13 @@ import { useToast } from '@/components/ui/use-toast';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { formatDate } from '@/lib/utils';
 import { Loader2, Megaphone, Plus, Send, Trash2, Users } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function AdminAnnouncementsPage() {
   const supabase = getSupabaseClient();
   const { toast } = useToast();
+  const searchParams = useSearchParams();
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -24,18 +26,24 @@ export default function AdminAnnouncementsPage() {
     targetRole: 'all',
   });
 
-  const fetchAnnouncements = async () => {
+  const fetchAnnouncements = useCallback(async () => {
     const { data } = await supabase
       .from('announcements')
       .select('*, created_by_profile:profiles!announcements_created_by_fkey(name)')
       .order('created_at', { ascending: false });
     setAnnouncements(data || []);
     setLoading(false);
-  };
+  }, [supabase]);
 
   useEffect(() => {
     fetchAnnouncements();
-  }, []);
+  }, [fetchAnnouncements]);
+
+  useEffect(() => {
+    if (searchParams.get('create') === '1') {
+      setShowForm(true);
+    }
+  }, [searchParams]);
 
   const handleCreate = async () => {
     if (!form.title || !form.content) {

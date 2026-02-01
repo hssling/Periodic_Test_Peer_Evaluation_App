@@ -66,6 +66,7 @@ export type Database = {
                     no_repeat_horizon: number;
                     eval_start_at: string | null;
                     eval_end_at: string | null;
+                    target_batch: string | null;
                     created_by: string;
                     created_at: string;
                     updated_at: string;
@@ -84,6 +85,7 @@ export type Database = {
                     no_repeat_horizon?: number;
                     eval_start_at?: string | null;
                     eval_end_at?: string | null;
+                    target_batch?: string | null;
                     created_by: string;
                     created_at?: string;
                     updated_at?: string;
@@ -102,6 +104,7 @@ export type Database = {
                     no_repeat_horizon?: number;
                     eval_start_at?: string | null;
                     eval_end_at?: string | null;
+                    target_batch?: string | null;
                     created_by?: string;
                     created_at?: string;
                     updated_at?: string;
@@ -212,6 +215,7 @@ export type Database = {
                     started_at: string;
                     submitted_at: string | null;
                     status: 'in_progress' | 'submitted' | 'evaluated' | 'reopened';
+                    final_score: number | null;
                     time_spent_seconds: number;
                     tab_switches: number;
                     paste_attempts: number;
@@ -225,6 +229,7 @@ export type Database = {
                     started_at?: string;
                     submitted_at?: string | null;
                     status?: 'in_progress' | 'submitted' | 'evaluated' | 'reopened';
+                    final_score?: number | null;
                     time_spent_seconds?: number;
                     tab_switches?: number;
                     paste_attempts?: number;
@@ -238,6 +243,7 @@ export type Database = {
                     started_at?: string;
                     submitted_at?: string | null;
                     status?: 'in_progress' | 'submitted' | 'evaluated' | 'reopened';
+                    final_score?: number | null;
                     time_spent_seconds?: number;
                     tab_switches?: number;
                     paste_attempts?: number;

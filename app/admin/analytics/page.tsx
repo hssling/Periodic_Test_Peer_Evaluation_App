@@ -1,6 +1,7 @@
 import { AnalyticsCharts } from "@/components/admin/analytics-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
+import { getTestStatus } from "@/lib/utils";
 import {
   Award,
   BarChart3,
@@ -22,6 +23,8 @@ export default async function AdminAnalyticsPage() {
     { count: attemptsCount },
     { count: evaluationsCount },
     { count: submittedCount },
+    { count: pendingAllocationsCount },
+    allocationsRes,
     testsRes,
     attemptsRes,
   ] = await Promise.all([
@@ -36,14 +39,29 @@ export default async function AdminAnalyticsPage() {
       .from("attempts")
       .select("*", { count: "exact", head: true })
       .in("status", ["submitted", "evaluated"]),
-    supabase.from("tests").select("id, title, total_marks"),
+    supabase
+      .from("allocations")
+      .select("*", { count: "exact", head: true })
+      .in("status", ["pending", "in_progress"]),
+    supabase
+      .from("allocations")
+      .select("attempt_id, evaluation:evaluations(total_score)")
+      .eq("status", "completed"),
+    supabase.from("tests").select("id, title, total_marks, start_at, end_at, status"),
     supabase
       .from("attempts")
       .select("id, test_id, status, submitted_at, final_score"),
   ]);
 
   const testData = testsRes.data as
-    | { id: string; title: string; total_marks: number }[]
+    | {
+        id: string;
+        title: string;
+        total_marks: number;
+        start_at: string;
+        end_at: string;
+        status: string;
+      }[]
     | null;
   const attemptData = attemptsRes.data as
     | {
@@ -55,8 +73,72 @@ export default async function AdminAnalyticsPage() {
       }[]
     | null;
 
+  const allocationScores = (allocationsRes.data || []) as {
+    attempt_id: string;
+    evaluation:
+      | { total_score: number | null }
+      | { total_score: number | null }[]
+      | null;
+  }[];
+
+  const attemptScoreMap = new Map<string, number>();
+  const scoreBuckets = new Map<string, number[]>();
+  allocationScores.forEach((allocation) => {
+    const evaluation = allocation.evaluation;
+    const score = Array.isArray(evaluation)
+      ? evaluation[0]?.total_score
+      : evaluation?.total_score;
+    if (score === null || score === undefined) return;
+    if (!scoreBuckets.has(allocation.attempt_id)) {
+      scoreBuckets.set(allocation.attempt_id, []);
+    }
+    scoreBuckets.get(allocation.attempt_id)!.push(score);
+  });
+  scoreBuckets.forEach((scores, attemptId) => {
+    const avg = scores.reduce((sum, value) => sum + value, 0) / scores.length;
+    attemptScoreMap.set(attemptId, avg);
+  });
+
+  const getAttemptScore = (attempt: {
+    id: string;
+    final_score: number | null;
+  }) => {
+    if (attempt.final_score !== null && attempt.final_score !== undefined) {
+      return attempt.final_score;
+    }
+    return attemptScoreMap.get(attempt.id) ?? null;
+  };
+
   const completionRate = attemptsCount
     ? Math.round(((submittedCount || 0) / attemptsCount) * 100)
+    : 0;
+
+  const activeTests =
+    testData?.filter(
+      (test) => getTestStatus(test.start_at, test.end_at, test.status) === "active",
+    ).length || 0;
+
+  const evaluatedAttempts =
+    attemptData?.filter((attempt) => attempt.status === "evaluated") || [];
+  const scoredAttempts = evaluatedAttempts.filter(
+    (attempt) => getAttemptScore(attempt) !== null,
+  );
+
+  const evaluatedRate = attemptsCount
+    ? Math.round((evaluatedAttempts.length / attemptsCount) * 100)
+    : 0;
+
+  const averageScorePercent = scoredAttempts.length
+    ? Math.round(
+        scoredAttempts.reduce((sum, attempt) => {
+          const test = (testData || []).find((t) => t.id === attempt.test_id);
+          const score = getAttemptScore(attempt);
+          if (!test || !test.total_marks || score === null) {
+            return sum;
+          }
+          return sum + (score / test.total_marks) * 100;
+        }, 0) / scoredAttempts.length,
+      )
     : 0;
 
   // Process data for charts
@@ -64,11 +146,11 @@ export default async function AdminAnalyticsPage() {
   const performanceTrends = (testData || [])
     .map((test) => {
       const testAttempts = (attemptData || []).filter(
-        (a) => a.test_id === test.id && a.final_score !== null,
+        (a) => a.test_id === test.id && getAttemptScore(a) !== null,
       );
       const avgScore =
         testAttempts.length > 0
-          ? testAttempts.reduce((sum, a) => sum + (a.final_score || 0), 0) /
+          ? testAttempts.reduce((sum, a) => sum + (getAttemptScore(a) || 0), 0) /
             testAttempts.length
           : 0;
 
@@ -89,11 +171,12 @@ export default async function AdminAnalyticsPage() {
   ];
 
   (attemptData || []).forEach((a) => {
-    if (a.final_score === null || a.final_score === undefined) return;
+    const score = getAttemptScore(a);
+    if (score === null || score === undefined) return;
     const test = (testData || []).find((t) => t.id === a.test_id);
     if (!test || !test.total_marks || test.total_marks === 0) return;
 
-    const percentage = (a.final_score / test.total_marks) * 100;
+    const percentage = (score / test.total_marks) * 100;
     if (percentage <= 20) scoreDist[0].count++;
     else if (percentage <= 40) scoreDist[1].count++;
     else if (percentage <= 60) scoreDist[2].count++;
@@ -172,20 +255,24 @@ export default async function AdminAnalyticsPage() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="p-4 rounded-lg bg-success/10 text-center">
-              <p className="text-lg font-bold text-success">Active</p>
-              <p className="text-sm text-muted-foreground">System Status</p>
+              <p className="text-lg font-bold text-success">{activeTests}</p>
+              <p className="text-sm text-muted-foreground">Active Tests</p>
             </div>
             <div className="p-4 rounded-lg bg-info/10 text-center">
-              <p className="text-lg font-bold text-info">99%</p>
-              <p className="text-sm text-muted-foreground">Uptime</p>
+              <p className="text-lg font-bold text-info">{evaluatedRate}%</p>
+              <p className="text-sm text-muted-foreground">Evaluated Rate</p>
             </div>
             <div className="p-4 rounded-lg bg-warning/10 text-center">
-              <p className="text-lg font-bold text-warning">Low</p>
-              <p className="text-sm text-muted-foreground">Error Rate</p>
+              <p className="text-lg font-bold text-warning">
+                {pendingAllocationsCount || 0}
+              </p>
+              <p className="text-sm text-muted-foreground">Pending Reviews</p>
             </div>
             <div className="p-4 rounded-lg bg-primary/10 text-center">
-              <p className="text-lg font-bold text-primary">Fast</p>
-              <p className="text-sm text-muted-foreground">Response Time</p>
+              <p className="text-lg font-bold text-primary">
+                {averageScorePercent}%
+              </p>
+              <p className="text-sm text-muted-foreground">Avg Score</p>
             </div>
           </div>
         </CardContent>

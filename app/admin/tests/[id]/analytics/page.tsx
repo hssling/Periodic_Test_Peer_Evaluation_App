@@ -37,28 +37,59 @@ export default async function AdminTestAnalyticsPage({
   // Get all attempts with scores
   const { data: attempts } = await supabase
     .from('attempts')
-    .select('*, student:profiles(name, batch, section)')
+    .select(
+      `
+      id,
+      status,
+      final_score,
+      student:profiles(name, batch, section),
+      allocations(
+        status,
+        evaluation:evaluations(total_score)
+      )
+    `,
+    )
     .eq('test_id', params.id)
     .in('status', ['submitted', 'evaluated']);
 
-  const allAttempts = (attempts || []) as any[];
+  const allAttempts = (attempts || []).map((attempt: any) => {
+    const evaluationScores =
+      attempt.allocations
+        ?.map((allocation: any) => {
+          const evaluation = allocation.evaluation;
+          return Array.isArray(evaluation)
+            ? evaluation[0]?.total_score
+            : evaluation?.total_score;
+        })
+        .filter((score: number | null | undefined) => score !== null && score !== undefined) || [];
+    const computedScore =
+      attempt.final_score !== null && attempt.final_score !== undefined
+        ? attempt.final_score
+        : evaluationScores.length > 0
+          ? evaluationScores.reduce((sum: number, score: number) => sum + score, 0) /
+            evaluationScores.length
+          : null;
+    return { ...attempt, computed_score: computedScore };
+  });
 
   // Calculate analytics
   const totalAttempts = allAttempts.length;
-  const evaluatedAttempts = allAttempts.filter(a => a.status === 'evaluated');
+  const evaluatedAttempts = allAttempts.filter(
+    (attempt) => attempt.status === 'evaluated' && attempt.computed_score !== null,
+  );
   
-  const scores = evaluatedAttempts.map(a => a.auto_score || 0);
+  const scores = evaluatedAttempts.map((attempt) => attempt.computed_score || 0);
   const averageScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
-  const lowestScore = scores.length > 0 ? Math.min(...scores) : 0;
 
   // Score distribution
   const distribution = {
-    excellent: evaluatedAttempts.filter(a => (a.auto_score / testData.total_marks) >= 0.9).length,
-    good: evaluatedAttempts.filter(a => (a.auto_score / testData.total_marks) >= 0.7 && (a.auto_score / testData.total_marks) < 0.9).length,
-    average: evaluatedAttempts.filter(a => (a.auto_score / testData.total_marks) >= 0.5 && (a.auto_score / testData.total_marks) < 0.7).length,
-    belowAverage: evaluatedAttempts.filter(a => (a.auto_score / testData.total_marks) < 0.5).length,
+    excellent: evaluatedAttempts.filter(a => (a.computed_score / testData.total_marks) >= 0.9).length,
+    good: evaluatedAttempts.filter(a => (a.computed_score / testData.total_marks) >= 0.7 && (a.computed_score / testData.total_marks) < 0.9).length,
+    average: evaluatedAttempts.filter(a => (a.computed_score / testData.total_marks) >= 0.5 && (a.computed_score / testData.total_marks) < 0.7).length,
+    belowAverage: evaluatedAttempts.filter(a => (a.computed_score / testData.total_marks) < 0.5).length,
   };
+  const distributionBase = evaluatedAttempts.length;
 
   return (
     <div className="space-y-6">
@@ -134,7 +165,7 @@ export default async function AdminTestAnalyticsPage({
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   <div 
                     className="h-full bg-success" 
-                    style={{ width: `${totalAttempts > 0 ? (distribution.excellent / totalAttempts) * 100 : 0}%` }}
+                    style={{ width: `${distributionBase > 0 ? (distribution.excellent / distributionBase) * 100 : 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -150,7 +181,7 @@ export default async function AdminTestAnalyticsPage({
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   <div 
                     className="h-full bg-info" 
-                    style={{ width: `${totalAttempts > 0 ? (distribution.good / totalAttempts) * 100 : 0}%` }}
+                    style={{ width: `${distributionBase > 0 ? (distribution.good / distributionBase) * 100 : 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -166,7 +197,7 @@ export default async function AdminTestAnalyticsPage({
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   <div 
                     className="h-full bg-warning" 
-                    style={{ width: `${totalAttempts > 0 ? (distribution.average / totalAttempts) * 100 : 0}%` }}
+                    style={{ width: `${distributionBase > 0 ? (distribution.average / distributionBase) * 100 : 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -182,7 +213,7 @@ export default async function AdminTestAnalyticsPage({
                 <div className="h-2 rounded-full bg-muted overflow-hidden">
                   <div 
                     className="h-full bg-destructive" 
-                    style={{ width: `${totalAttempts > 0 ? (distribution.belowAverage / totalAttempts) * 100 : 0}%` }}
+                    style={{ width: `${distributionBase > 0 ? (distribution.belowAverage / distributionBase) * 100 : 0}%` }}
                   ></div>
                 </div>
               </div>
@@ -204,7 +235,7 @@ export default async function AdminTestAnalyticsPage({
             ) : (
               <div className="space-y-3">
                 {evaluatedAttempts
-                  .sort((a, b) => (b.auto_score || 0) - (a.auto_score || 0))
+                  .sort((a, b) => (b.computed_score || 0) - (a.computed_score || 0))
                   .slice(0, 5)
                   .map((attempt, idx) => (
                     <div key={attempt.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50">
@@ -220,11 +251,11 @@ export default async function AdminTestAnalyticsPage({
                         <p className="font-medium">{attempt.student?.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {attempt.student?.batch && `Batch ${attempt.student.batch}`}
-                          {attempt.student?.section && ` • Section ${attempt.student.section}`}
+                          {attempt.student?.section && ` • Group ${attempt.student.section}`}
                         </p>
                       </div>
                       <span className="font-bold text-success">
-                        {attempt.auto_score}/{testData.total_marks}
+                        {Math.round(attempt.computed_score || 0)}/{testData.total_marks}
                       </span>
                     </div>
                   ))}
@@ -256,7 +287,8 @@ export default async function AdminTestAnalyticsPage({
                 </thead>
                 <tbody>
                   {allAttempts.map((attempt) => {
-                    const percentage = Math.round(((attempt.auto_score || 0) / testData.total_marks) * 100);
+                    const scoreValue = attempt.computed_score || 0;
+                    const percentage = Math.round((scoreValue / testData.total_marks) * 100);
                     return (
                       <tr key={attempt.id} className="border-b">
                         <td className="py-3 px-2 font-medium">{attempt.student?.name}</td>
@@ -264,7 +296,9 @@ export default async function AdminTestAnalyticsPage({
                           {attempt.student?.batch || '-'}
                         </td>
                         <td className="py-3 px-2 text-center">
-                          {attempt.auto_score || 0}/{testData.total_marks}
+                          {attempt.status === 'evaluated'
+                            ? `${Math.round(scoreValue)}/${testData.total_marks}`
+                            : '-'}
                         </td>
                         <td className="py-3 px-2 text-center">
                           <span className={`font-medium ${
@@ -272,7 +306,7 @@ export default async function AdminTestAnalyticsPage({
                             percentage >= 60 ? 'text-warning' :
                             'text-destructive'
                           }`}>
-                            {percentage}%
+                            {attempt.status === 'evaluated' ? `${percentage}%` : '-'}
                           </span>
                         </td>
                         <td className="py-3 px-2 text-center">

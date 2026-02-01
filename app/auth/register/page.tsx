@@ -194,16 +194,16 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="section">Section (Optional)</Label>
+                <Label htmlFor="section">Group (Optional)</Label>
                 <select
                   id="section"
                   {...register("section")}
                   className="w-full h-10 px-3 rounded-lg border bg-background text-sm"
                 >
-                  <option value="A">Section A</option>
-                  <option value="B">Section B</option>
-                  <option value="C">Section C</option>
-                  <option value="D">Section D</option>
+                  <option value="A">Group A</option>
+                  <option value="B">Group B</option>
+                  <option value="C">Group C</option>
+                  <option value="D">Group D</option>
                 </select>
               </div>
 

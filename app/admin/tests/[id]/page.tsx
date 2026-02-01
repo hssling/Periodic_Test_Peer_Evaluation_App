@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PublishTestButton } from "@/components/admin/publish-test-button";
 import { createClient } from "@/lib/supabase/server";
 import { formatDate, getTestStatus } from "@/lib/utils";
 import {

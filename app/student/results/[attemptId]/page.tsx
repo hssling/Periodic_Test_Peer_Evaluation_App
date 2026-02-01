@@ -217,7 +217,7 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
                 </div>
                 {evaluation?.overall_feedback && (
                   <p className="text-sm text-muted-foreground mt-2">
-                    "{evaluation.overall_feedback}"
+                    &ldquo;{evaluation.overall_feedback}&rdquo;
                   </p>
                 )}
               </div>

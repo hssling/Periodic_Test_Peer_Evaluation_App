@@ -10,7 +10,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Loader2, Save, Send, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 interface EvaluationClientProps {
   allocation: any;
@@ -51,31 +51,31 @@ export function EvaluationClient({ allocation, submission, existingEvaluation }:
   const totalScore = Object.values(scores).reduce((sum, s) => sum + (s || 0), 0);
   const maxScore = questions.reduce((sum: number, q: any) => sum + q.max_marks, 0);
 
+  const ensureEvaluation = useCallback(async () => {
+    if (evaluationId) return;
+    const { data } = await supabase
+      .from('evaluations')
+      .insert({
+        allocation_id: allocation.id,
+        is_draft: true,
+      })
+      .select()
+      .single();
+
+    if (data) {
+      setEvaluationId(data.id);
+      // Update allocation status
+      await supabase
+        .from('allocations')
+        .update({ status: 'in_progress' })
+        .eq('id', allocation.id);
+    }
+  }, [allocation.id, evaluationId, supabase]);
+
   // Create or get evaluation on mount
   useEffect(() => {
-    async function ensureEvaluation() {
-      if (!evaluationId) {
-        const { data, error } = await supabase
-          .from('evaluations')
-          .insert({
-            allocation_id: allocation.id,
-            is_draft: true,
-          })
-          .select()
-          .single();
-
-        if (data) {
-          setEvaluationId(data.id);
-          // Update allocation status
-          await supabase
-            .from('allocations')
-            .update({ status: 'in_progress' })
-            .eq('id', allocation.id);
-        }
-      }
-    }
     ensureEvaluation();
-  }, []);
+  }, [ensureEvaluation]);
 
   const handleScoreChange = (questionId: string, score: number, maxMarks: number) => {
     const validScore = Math.min(Math.max(0, score), maxMarks);
@@ -232,7 +232,7 @@ export function EvaluationClient({ allocation, submission, existingEvaluation }:
 
             {/* Student's response */}
             <div>
-              <Label className="text-muted-foreground">Student's Response</Label>
+              <Label className="text-muted-foreground">Student&apos;s Response</Label>
               <div className="mt-2 p-4 bg-background border rounded-lg min-h-[100px]">
                 {currentResponse?.answer_text ? (
                   <p className="whitespace-pre-wrap">{currentResponse.answer_text}</p>
