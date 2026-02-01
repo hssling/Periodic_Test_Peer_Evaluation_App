@@ -222,7 +222,7 @@ export function InstallButton() {
       <div className="p-4 bg-muted/50 rounded-lg text-center">
         <p className="text-sm text-muted-foreground mb-2">To install on iOS:</p>
         <p className="text-sm">
-          Tap <Share className="w-4 h-4 inline" /> -> &quot;Add to Home Screen&quot;
+          Tap <Share className="w-4 h-4 inline" /> &gt; &quot;Add to Home Screen&quot;
         </p>
       </div>
     );
