@@ -96,6 +96,25 @@ export function TestAttemptClient({
     await handleSubmit();
   }, [handleSubmit, toast]);
 
+  const retryOperation = useCallback(
+    async <T,>(operation: () => Promise<T>, retries = 3) => {
+      let attemptCount = 0;
+      let delay = 500;
+      while (attemptCount < retries) {
+        try {
+          return await operation();
+        } catch (error) {
+          attemptCount += 1;
+          if (attemptCount >= retries) throw error;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          delay *= 2;
+        }
+      }
+      throw new Error("Retry failed");
+    },
+    [],
+  );
+
   // Save response
   const saveResponse = useCallback(
     async (questionId: string, response: any) => {
@@ -113,17 +132,19 @@ export function TestAttemptClient({
         setSyncStatus((prev) => ({ ...prev, [questionId]: "syncing" }));
 
         try {
-          const { error } = await supabase.from("responses").upsert(
-            {
-              attempt_id: attempt.id,
-              question_id: questionId,
-              answer_text: response.answer_text || null,
-              selected_options: response.selected_options || null,
-              saved_at: new Date().toISOString(),
-            },
-            {
-              onConflict: "attempt_id,question_id",
-            },
+          const { error } = await retryOperation(() =>
+            supabase.from("responses").upsert(
+              {
+                attempt_id: attempt.id,
+                question_id: questionId,
+                answer_text: response.answer_text || null,
+                selected_options: response.selected_options || null,
+                saved_at: new Date().toISOString(),
+              },
+              {
+                onConflict: "attempt_id,question_id",
+              },
+            ),
           );
 
           if (error) throw error;
@@ -141,7 +162,7 @@ export function TestAttemptClient({
         }
       }, 1000);
     },
-    [attempt.id, supabase, toast],
+    [attempt.id, retryOperation, supabase, toast],
   );
 
   // Handle paste attempt

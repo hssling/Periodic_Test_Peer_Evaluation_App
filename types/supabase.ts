@@ -395,6 +395,8 @@ export type Database = {
                     question_id: string;
                     score: number;
                     feedback: string | null;
+                    max_score: number | null;
+                    score_percent: number | null;
                 };
                 Insert: {
                     id?: string;
@@ -402,6 +404,8 @@ export type Database = {
                     question_id: string;
                     score: number;
                     feedback?: string | null;
+                    max_score?: number | null;
+                    score_percent?: number | null;
                 };
                 Update: {
                     id?: string;
@@ -409,6 +413,8 @@ export type Database = {
                     question_id?: string;
                     score?: number;
                     feedback?: string | null;
+                    max_score?: number | null;
+                    score_percent?: number | null;
                 };
                 Relationships: [
                     {

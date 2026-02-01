@@ -56,6 +56,23 @@ export default async function AdminTestDetailPage({
     .eq("test_id", params.id)
     .eq("status", "submitted");
 
+  const { data: attemptIds } = await supabase
+    .from("attempts")
+    .select("id")
+    .eq("test_id", params.id);
+
+  const { count: pendingReviews } =
+    attemptIds && attemptIds.length > 0
+      ? await supabase
+          .from("allocations")
+          .select("id", { count: "exact", head: true })
+          .in("status", ["pending", "in_progress"])
+          .in(
+            "attempt_id",
+            attemptIds.map((a: any) => a.id),
+          )
+      : { count: 0 };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -210,6 +227,10 @@ export default async function AdminTestDetailPage({
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Submitted</span>
                 <span className="font-medium">{submittedAttempts || 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Pending Reviews</span>
+                <span className="font-medium">{pendingReviews || 0}</span>
               </div>
             </CardContent>
           </Card>

@@ -17,6 +17,7 @@ interface TestCardProps {
 export function TestCard({ test, attempt, status }: TestCardProps) {
     const hasAttempted = !!attempt;
     const isSubmitted = attempt?.status === 'submitted' || attempt?.status === 'evaluated';
+    const isEvaluated = attempt?.status === 'evaluated';
     const isInProgress = attempt?.status === 'in_progress';
 
     const getStatusBadge = () => {
@@ -29,6 +30,14 @@ export function TestCard({ test, attempt, status }: TestCardProps) {
             );
         }
         if (status === 'active') {
+            if (isEvaluated) {
+                return (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">
+                        <Award className="w-3 h-3" />
+                        Results
+                    </span>
+                );
+            }
             if (isSubmitted) {
                 return (
                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">

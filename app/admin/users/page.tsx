@@ -10,30 +10,61 @@ export const dynamic = "force-dynamic";
 export default async function AdminUsersPage({
   searchParams,
 }: {
-  searchParams: { batch?: string };
+  searchParams: { batch?: string; q?: string; page?: string };
 }) {
   const supabase = await createClient();
   const selectedBatch = searchParams.batch;
+  const searchQuery = searchParams.q?.trim();
+  const page = Math.max(1, Number(searchParams.page || 1));
+  const pageSize = 20;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
 
-  const { data: profiles } = (await supabase
+  const statsQuery = supabase
     .from("profiles")
-    .select("*")
-    .order("created_at", { ascending: false })) as { data: Profile[] | null };
+    .select("role, batch, is_active", { count: "exact" });
 
-  const allStudents = (profiles || []).filter(
-    (p: Profile) => p.role === "student",
+  const { data: statsRows, count: totalUsers } = (await statsQuery) as {
+    data: Pick<Profile, "role" | "batch" | "is_active">[] | null;
+    count: number | null;
+  };
+
+  const allStudents = (statsRows || []).filter(
+    (p) => p.role === "student",
   );
-  const admins = (profiles || []).filter(
-    (p: Profile) => p.role === "admin" || p.role === "faculty",
+  const admins = (statsRows || []).filter(
+    (p) => p.role === "admin" || p.role === "faculty",
   );
+  const activeCount = (statsRows || []).filter((p) => p.is_active).length;
 
   const batches = Array.from(
     new Set(allStudents.map((s) => s.batch).filter(Boolean)),
   ).sort();
 
-  const students = selectedBatch
-    ? allStudents.filter((s) => s.batch === selectedBatch)
-    : allStudents;
+  let profilesQuery = supabase
+    .from("profiles")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (searchQuery) {
+    profilesQuery = profilesQuery.or(
+      `name.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%,roll_no.ilike.%${searchQuery}%`,
+    );
+  }
+
+  if (selectedBatch) {
+    profilesQuery = profilesQuery.eq("batch", selectedBatch);
+  }
+
+  const { data: profiles, count } = (await profilesQuery) as {
+    data: Profile[] | null;
+    count: number | null;
+  };
+
+  const students = (profiles || []).filter((p: Profile) => p.role === "student");
+  const totalRows = count || 0;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
 
   return (
     <div className="space-y-6">
@@ -58,7 +89,7 @@ export default async function AdminUsersPage({
                 <Users className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{profiles?.length || 0}</p>
+                <p className="text-2xl font-bold">{totalUsers || 0}</p>
                 <p className="text-xs text-muted-foreground">Total Users</p>
               </div>
             </div>
@@ -97,9 +128,7 @@ export default async function AdminUsersPage({
                 <UserCheck className="w-5 h-5 text-warning" />
               </div>
               <div>
-                <p className="text-2xl font-bold">
-                  {(profiles || []).filter((p) => p.is_active).length}
-                </p>
+                <p className="text-2xl font-bold">{activeCount}</p>
                 <p className="text-xs text-muted-foreground">Active</p>
               </div>
             </div>
@@ -122,7 +151,7 @@ export default async function AdminUsersPage({
         {batches.map((batch) => (
           <a
             key={batch}
-            href={`/admin/users?batch=${batch}`}
+            href={`/admin/users?batch=${batch}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""}`}
             className={`px-4 py-2 rounded-full text-sm font-medium transition-colors border ${
               selectedBatch === batch
                 ? "bg-primary text-primary-foreground border-primary"
@@ -132,6 +161,22 @@ export default async function AdminUsersPage({
             Batch {batch}
           </a>
         ))}
+      </div>
+
+      {/* Search */}
+      <div className="flex items-center gap-2">
+        <form className="w-full max-w-md">
+          <input
+            type="text"
+            name="q"
+            placeholder="Search by name, email, roll no..."
+            defaultValue={searchQuery || ""}
+            className="w-full h-10 px-3 rounded-lg border bg-background text-sm"
+          />
+          {selectedBatch && (
+            <input type="hidden" name="batch" value={selectedBatch} />
+          )}
+        </form>
       </div>
 
       {/* Admins/Faculty */}
@@ -278,6 +323,37 @@ export default async function AdminUsersPage({
           )}
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Page {page} of {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <a
+              href={`/admin/users?page=${Math.max(1, page - 1)}${selectedBatch ? `&batch=${selectedBatch}` : ""}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""}`}
+              className={`px-3 py-1 rounded-md border ${
+                page === 1
+                  ? "pointer-events-none text-muted-foreground"
+                  : "hover:bg-muted"
+              }`}
+            >
+              Previous
+            </a>
+            <a
+              href={`/admin/users?page=${Math.min(totalPages, page + 1)}${selectedBatch ? `&batch=${selectedBatch}` : ""}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""}`}
+              className={`px-3 py-1 rounded-md border ${
+                page >= totalPages
+                  ? "pointer-events-none text-muted-foreground"
+                  : "hover:bg-muted"
+              }`}
+            >
+              Next
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

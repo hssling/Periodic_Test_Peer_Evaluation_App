@@ -19,7 +19,11 @@ type Test = Database["public"]["Tables"]["tests"]["Row"];
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminTestsPage() {
+export default async function AdminTestsPage({
+  searchParams,
+}: {
+  searchParams?: { q?: string; page?: string; status?: string };
+}) {
   let supabase;
   try {
     supabase = await createClient();
@@ -27,11 +31,31 @@ export default async function AdminTestsPage() {
     return <ErrorState message="Failed to connect to database" />;
   }
 
+  const searchQuery = searchParams?.q?.trim();
+  const statusFilter = searchParams?.status?.trim();
+  const page = Math.max(1, Number(searchParams?.page || 1));
+  const pageSize = 12;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
   // Get tests
-  const { data: tests, error: testsError } = await supabase
+  let testsQuery = supabase
     .from("tests")
-    .select("*")
-    .order("created_at", { ascending: false });
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(from, to);
+
+  if (searchQuery) {
+    testsQuery = testsQuery.or(
+      `title.ilike.%${searchQuery}%,description.ilike.%${searchQuery}%`,
+    );
+  }
+
+  if (statusFilter) {
+    testsQuery = testsQuery.eq("status", statusFilter);
+  }
+
+  const { data: tests, error: testsError, count } = await testsQuery;
 
   if (testsError) {
     console.error("Tests fetch error:", testsError);
@@ -45,6 +69,7 @@ export default async function AdminTestsPage() {
   // This is a trade-off. For hundreds of attempts it's fine. For millions, we'd need a view or RPC.
   const testIds = (tests || []).map((t: Test) => t.id);
   let countByTest = new Map<string, number>();
+  let pendingByTest = new Map<string, number>();
 
   if (testIds.length > 0) {
     try {
@@ -59,10 +84,25 @@ export default async function AdminTestsPage() {
           countByTest.set(a.test_id, (countByTest.get(a.test_id) || 0) + 1);
         });
       }
+
+      const { data: pendingAllocations } = await supabase
+        .from("allocations")
+        .select("status, attempt:attempts(test_id)")
+        .in("status", ["pending", "in_progress"]);
+
+      (pendingAllocations || []).forEach((row: any) => {
+        const testId = row.attempt?.test_id;
+        if (testId && testIds.includes(testId)) {
+          pendingByTest.set(testId, (pendingByTest.get(testId) || 0) + 1);
+        }
+      });
     } catch (e) {
       console.error("Attempt counts fetch error:", e);
     }
   }
+
+  const totalRows = count || 0;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
 
   return (
     <div className="space-y-6">
@@ -82,6 +122,22 @@ export default async function AdminTestsPage() {
             Create Test
           </Button>
         </Link>
+      </div>
+
+      {/* Search */}
+      <div className="flex items-center gap-2">
+        <form className="w-full max-w-md">
+          <input
+            type="text"
+            name="q"
+            placeholder="Search by title or description..."
+            defaultValue={searchQuery || ""}
+            className="w-full h-10 px-3 rounded-lg border bg-background text-sm"
+          />
+          {statusFilter && (
+            <input type="hidden" name="status" value={statusFilter} />
+          )}
+        </form>
       </div>
 
       {/* Tests Grid */}
@@ -110,6 +166,7 @@ export default async function AdminTestsPage() {
               test.status,
             );
             const attemptCount = countByTest.get(test.id) || 0;
+            const pendingCount = pendingByTest.get(test.id) || 0;
 
             return (
               <Card key={test.id} hover>
@@ -150,6 +207,12 @@ export default async function AdminTestsPage() {
                           <Users className="w-3 h-3 sm:w-4 sm:h-4" />
                           {attemptCount} attempts
                         </span>
+                        {pendingCount > 0 && (
+                          <span className="flex items-center gap-1 text-warning">
+                            <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                            {pendingCount} pending
+                          </span>
+                        )}
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                           {formatDate(test.start_at, {
@@ -183,6 +246,37 @@ export default async function AdminTestsPage() {
           })
         )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Page {page} of {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <a
+              href={`/admin/tests?page=${Math.max(1, page - 1)}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""}${statusFilter ? `&status=${statusFilter}` : ""}`}
+              className={`px-3 py-1 rounded-md border ${
+                page === 1
+                  ? "pointer-events-none text-muted-foreground"
+                  : "hover:bg-muted"
+              }`}
+            >
+              Previous
+            </a>
+            <a
+              href={`/admin/tests?page=${Math.min(totalPages, page + 1)}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""}${statusFilter ? `&status=${statusFilter}` : ""}`}
+              className={`px-3 py-1 rounded-md border ${
+                page >= totalPages
+                  ? "pointer-events-none text-muted-foreground"
+                  : "hover:bg-muted"
+              }`}
+            >
+              Next
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

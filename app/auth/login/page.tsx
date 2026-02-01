@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, GraduationCap, Loader2, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -32,6 +32,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -47,7 +48,22 @@ function LoginForm() {
     resolver: zodResolver(loginSchema),
   });
 
+  useEffect(() => {
+    const saved = localStorage.getItem("loginCooldownUntil");
+    if (saved) setCooldownUntil(Number(saved));
+  }, []);
+
   const onSubmit = async (data: LoginFormData) => {
+    const now = Date.now();
+    if (cooldownUntil && now < cooldownUntil) {
+      const seconds = Math.ceil((cooldownUntil - now) / 1000);
+      toast({
+        variant: "warning",
+        title: "Please wait",
+        description: `Try again in ${seconds}s.`,
+      });
+      return;
+    }
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -56,6 +72,9 @@ function LoginForm() {
       });
 
       if (error) {
+        const nextCooldown = Date.now() + 10_000;
+        localStorage.setItem("loginCooldownUntil", String(nextCooldown));
+        setCooldownUntil(nextCooldown);
         toast({
           variant: "destructive",
           title: "Login failed",

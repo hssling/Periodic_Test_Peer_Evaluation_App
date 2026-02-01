@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
 import { ArrowLeft, GraduationCap, Loader2, Mail } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -30,6 +30,7 @@ type ResetFormData = z.infer<typeof resetSchema>;
 export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [cooldownUntil, setCooldownUntil] = useState(0);
   const { toast } = useToast();
   const supabase = getSupabaseClient();
 
@@ -41,7 +42,22 @@ export default function ResetPasswordPage() {
     resolver: zodResolver(resetSchema),
   });
 
+  useEffect(() => {
+    const saved = localStorage.getItem("resetCooldownUntil");
+    if (saved) setCooldownUntil(Number(saved));
+  }, []);
+
   const onSubmit = async (data: ResetFormData) => {
+    const now = Date.now();
+    if (cooldownUntil && now < cooldownUntil) {
+      const seconds = Math.ceil((cooldownUntil - now) / 1000);
+      toast({
+        variant: "warning",
+        title: "Please wait",
+        description: `Try again in ${seconds}s.`,
+      });
+      return;
+    }
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
@@ -49,6 +65,9 @@ export default function ResetPasswordPage() {
       });
 
       if (error) {
+        const nextCooldown = Date.now() + 15_000;
+        localStorage.setItem("resetCooldownUntil", String(nextCooldown));
+        setCooldownUntil(nextCooldown);
         toast({
           variant: "destructive",
           title: "Error",

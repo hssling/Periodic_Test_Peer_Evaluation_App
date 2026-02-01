@@ -12,8 +12,16 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminAuditLogsPage() {
+export default async function AdminAuditLogsPage({
+  searchParams,
+}: {
+  searchParams?: { page?: string };
+}) {
   const supabase = await createClient();
+  const page = Math.max(1, Number(searchParams?.page || 1));
+  const pageSize = 25;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
 
   const [
     logsRes,
@@ -26,9 +34,10 @@ export default async function AdminAuditLogsPage() {
       .from('audit_logs')
       .select(
         'id, action_type, payload, created_at, user:profiles(name, role)',
+        { count: 'exact' },
       )
       .order('created_at', { ascending: false })
-      .limit(50),
+      .range(from, to),
     supabase.from('audit_logs').select('*', { count: 'exact', head: true }),
     supabase
       .from('audit_logs')
@@ -45,6 +54,8 @@ export default async function AdminAuditLogsPage() {
   ]);
 
   const rawLogs = logsRes.data || [];
+  const totalRows = logsRes.count || 0;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
 
   const getLogMeta = (actionType: string) => {
     switch (actionType) {
@@ -188,7 +199,7 @@ export default async function AdminAuditLogsPage() {
             <p className="text-center text-muted-foreground py-8">No activity logs yet</p>
           ) : (
             <div className="space-y-4">
-              {logs.slice(0, 20).map((log) => (
+              {logs.map((log) => (
                 <div key={log.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors">
                   <div className="mt-1">{getIcon(log.type)}</div>
                   <div className="flex-1">
@@ -221,6 +232,37 @@ export default async function AdminAuditLogsPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Page {page} of {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <a
+              href={`/admin/audit-logs?page=${Math.max(1, page - 1)}`}
+              className={`px-3 py-1 rounded-md border ${
+                page === 1
+                  ? 'pointer-events-none text-muted-foreground'
+                  : 'hover:bg-muted'
+              }`}
+            >
+              Previous
+            </a>
+            <a
+              href={`/admin/audit-logs?page=${Math.min(totalPages, page + 1)}`}
+              className={`px-3 py-1 rounded-md border ${
+                page >= totalPages
+                  ? 'pointer-events-none text-muted-foreground'
+                  : 'hover:bg-muted'
+              }`}
+            >
+              Next
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

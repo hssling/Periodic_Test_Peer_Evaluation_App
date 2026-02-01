@@ -62,6 +62,10 @@ export default async function AdminTestAnalyticsPage({
             : evaluation?.total_score;
         })
         .filter((score: number | null | undefined) => score !== null && score !== undefined) || [];
+    const pendingReviewers =
+      attempt.allocations?.filter(
+        (allocation: any) => allocation.status !== 'completed',
+      ).length || 0;
     const computedScore =
       attempt.final_score !== null && attempt.final_score !== undefined
         ? attempt.final_score
@@ -69,7 +73,7 @@ export default async function AdminTestAnalyticsPage({
           ? evaluationScores.reduce((sum: number, score: number) => sum + score, 0) /
             evaluationScores.length
           : null;
-    return { ...attempt, computed_score: computedScore };
+    return { ...attempt, computed_score: computedScore, pending_reviewers: pendingReviewers };
   });
 
   // Calculate analytics
@@ -282,6 +286,7 @@ export default async function AdminTestAnalyticsPage({
                     <th className="text-left py-3 px-2 hidden sm:table-cell">Batch</th>
                     <th className="text-center py-3 px-2">Score</th>
                     <th className="text-center py-3 px-2">Percentage</th>
+                    <th className="text-center py-3 px-2">Pending Reviews</th>
                     <th className="text-center py-3 px-2">Status</th>
                   </tr>
                 </thead>
@@ -308,6 +313,9 @@ export default async function AdminTestAnalyticsPage({
                           }`}>
                             {attempt.status === 'evaluated' ? `${percentage}%` : '-'}
                           </span>
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          {attempt.pending_reviewers || 0}
                         </td>
                         <td className="py-3 px-2 text-center">
                           <span className={`px-2 py-1 rounded-full text-xs ${

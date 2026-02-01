@@ -6,16 +6,37 @@ import { AlertTriangle, CheckCircle, ClipboardList, Clock } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
-export default async function AdminEvaluationsPage() {
+export default async function AdminEvaluationsPage({
+  searchParams,
+}: {
+  searchParams?: { page?: string; status?: string };
+}) {
   const supabase = await createClient();
+  const page = Math.max(1, Number(searchParams?.page || 1));
+  const pageSize = 20;
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  const statusFilter = searchParams?.status;
 
   // Get all allocations with attempts and test info
-  const { data: allocations } = await supabase
+  let allocationsQuery = supabase
     .from('allocations')
-    .select('*, attempt:attempts(*, test:tests(*), student:profiles(*)), evaluator:profiles(*)')
-    .order('allocated_at', { ascending: false });
+    .select(
+      '*, attempt:attempts(*, test:tests(*), student:profiles(*)), evaluator:profiles(*)',
+      { count: 'exact' },
+    )
+    .order('allocated_at', { ascending: false })
+    .range(from, to);
+
+  if (statusFilter) {
+    allocationsQuery = allocationsQuery.eq('status', statusFilter);
+  }
+
+  const { data: allocations, count } = await allocationsQuery;
 
   const allAllocations = (allocations || []) as any[];
+  const totalRows = count || 0;
+  const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
   
   const pending = allAllocations.filter(a => a.status === 'pending');
   const inProgress = allAllocations.filter(a => a.status === 'in_progress');
@@ -128,8 +149,8 @@ export default async function AdminEvaluationsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {allAllocations.slice(0, 20).map((allocation: any) => (
-                    <tr key={allocation.id} className="border-b">
+              {allAllocations.map((allocation: any) => (
+                <tr key={allocation.id} className="border-b">
                       <td className="py-3 px-2">{allocation.attempt?.test?.title}</td>
                       <td className="py-3 px-2 hidden sm:table-cell">{allocation.evaluator?.name}</td>
                       <td className="py-3 px-2 hidden md:table-cell">
@@ -148,13 +169,44 @@ export default async function AdminEvaluationsPage() {
                         {formatDate(allocation.allocated_at, { month: 'short', day: 'numeric' })}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </CardContent>
+  </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">
+            Page {page} of {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <a
+              href={`/admin/evaluations?page=${Math.max(1, page - 1)}${statusFilter ? `&status=${statusFilter}` : ''}`}
+              className={`px-3 py-1 rounded-md border ${
+                page === 1
+                  ? 'pointer-events-none text-muted-foreground'
+                  : 'hover:bg-muted'
+              }`}
+            >
+              Previous
+            </a>
+            <a
+              href={`/admin/evaluations?page=${Math.min(totalPages, page + 1)}${statusFilter ? `&status=${statusFilter}` : ''}`}
+              className={`px-3 py-1 rounded-md border ${
+                page >= totalPages
+                  ? 'pointer-events-none text-muted-foreground'
+                  : 'hover:bg-muted'
+              }`}
+            >
+              Next
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

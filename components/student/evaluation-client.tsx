@@ -51,26 +51,49 @@ export function EvaluationClient({ allocation, submission, existingEvaluation }:
   const totalScore = Object.values(scores).reduce((sum, s) => sum + (s || 0), 0);
   const maxScore = questions.reduce((sum: number, q: any) => sum + q.max_marks, 0);
 
+  const retryOperation = useCallback(
+    async <T,>(operation: () => Promise<T>, retries = 3) => {
+      let attemptCount = 0;
+      let delay = 500;
+      while (attemptCount < retries) {
+        try {
+          return await operation();
+        } catch (error) {
+          attemptCount += 1;
+          if (attemptCount >= retries) throw error;
+          await new Promise((resolve) => setTimeout(resolve, delay));
+          delay *= 2;
+        }
+      }
+      throw new Error('Retry failed');
+    },
+    [],
+  );
+
   const ensureEvaluation = useCallback(async () => {
     if (evaluationId) return;
-    const { data } = await supabase
-      .from('evaluations')
-      .insert({
-        allocation_id: allocation.id,
-        is_draft: true,
-      })
-      .select()
-      .single();
+    const { data } = await retryOperation(() =>
+      supabase
+        .from('evaluations')
+        .insert({
+          allocation_id: allocation.id,
+          is_draft: true,
+        })
+        .select()
+        .single(),
+    );
 
     if (data) {
       setEvaluationId(data.id);
       // Update allocation status
-      await supabase
-        .from('allocations')
-        .update({ status: 'in_progress' })
-        .eq('id', allocation.id);
+      await retryOperation(() =>
+        supabase
+          .from('allocations')
+          .update({ status: 'in_progress' })
+          .eq('id', allocation.id),
+      );
     }
-  }, [allocation.id, evaluationId, supabase]);
+  }, [allocation.id, evaluationId, retryOperation, supabase]);
 
   // Create or get evaluation on mount
   useEffect(() => {
@@ -90,22 +113,26 @@ export function EvaluationClient({ allocation, submission, existingEvaluation }:
       // Upsert evaluation items
       for (const question of questions) {
         if (scores[question.id] !== undefined) {
-          await supabase
-            .from('evaluation_items')
-            .upsert({
-              evaluation_id: evaluationId,
-              question_id: question.id,
-              score: scores[question.id] || 0,
-              feedback: feedback[question.id] || null,
-            }, { onConflict: 'evaluation_id,question_id' });
+          await retryOperation(() =>
+            supabase
+              .from('evaluation_items')
+              .upsert({
+                evaluation_id: evaluationId,
+                question_id: question.id,
+                score: scores[question.id] || 0,
+                feedback: feedback[question.id] || null,
+              }, { onConflict: 'evaluation_id,question_id' }),
+          );
         }
       }
 
       // Update overall feedback
-      await supabase
-        .from('evaluations')
-        .update({ overall_feedback: overallFeedback })
-        .eq('id', evaluationId);
+      await retryOperation(() =>
+        supabase
+          .from('evaluations')
+          .update({ overall_feedback: overallFeedback })
+          .eq('id', evaluationId),
+      );
 
       toast({
         variant: 'success',
@@ -142,9 +169,11 @@ export function EvaluationClient({ allocation, submission, existingEvaluation }:
       await handleSaveDraft();
 
       // Submit evaluation
-      const { error } = await supabase.rpc('submit_evaluation', {
-        p_evaluation_id: evaluationId,
-      });
+      const { error } = await retryOperation(() =>
+        supabase.rpc('submit_evaluation', {
+          p_evaluation_id: evaluationId,
+        }),
+      );
 
       if (error) throw error;
 
