@@ -97,10 +97,16 @@ function parseGoogleFormQuestions(html: string): any[] {
           case 3:
             type = 'mcq_single';
             parsedOptions = extractOptions(options);
+            if (parsedOptions.length === 0) {
+              parsedOptions = deepFindOptions(group);
+            }
             break;
           case 4:
             type = 'mcq_multiple';
             parsedOptions = extractOptions(options);
+            if (parsedOptions.length === 0) {
+              parsedOptions = deepFindOptions(group);
+            }
             break;
           default:
             type = 'short_answer';
@@ -118,20 +124,30 @@ function parseGoogleFormQuestions(html: string): any[] {
     
     // Fallback: Try to parse from visible HTML structure
     if (questions.length === 0) {
-      // Basic regex extraction for form fields
-      const questionRegex = /data-params="[^"]*\["([^"]+)"[^"]*\]"/g;
+      // Extract data-params JSON and parse options when possible
+      const paramRegex = /data-params="([^"]+)"/g;
       let match;
       let index = 0;
-      
-      while ((match = questionRegex.exec(html)) !== null && index < 50) {
-        const questionText = match[1].replace(/\\u003c[^>]+\\u003e/g, '').trim();
-        if (questionText && questionText.length > 3) {
+
+      while ((match = paramRegex.exec(html)) !== null && index < 200) {
+        const raw = match[1].replace(/&quot;/g, '"');
+        if (!raw.includes("[")) continue;
+        const decoded = raw.replace(/\\u003c/g, "<").replace(/\\u003e/g, ">");
+        try {
+          const parsed = JSON.parse(decoded);
+          if (!Array.isArray(parsed)) continue;
+          const maybeText = parsed.find((v: any) => typeof v === "string");
+          if (!maybeText || maybeText.length < 3) continue;
+          const options = deepFindOptions(parsed);
           questions.push({
-            type: 'short_answer',
-            prompt: questionText,
-            maxMarks: 2,
+            type: options.length > 0 ? "mcq_single" : "short_answer",
+            prompt: maybeText.replace(/<[^>]+>/g, "").trim(),
+            options: options.length > 0 ? options : undefined,
+            maxMarks: options.length > 0 ? 1 : 2,
           });
           index++;
+        } catch {
+          // ignore
         }
       }
     }
@@ -236,4 +252,30 @@ function extractOptions(options: any): string[] {
   }
 
   return [];
+}
+
+function deepFindOptions(node: any): string[] {
+  const results: string[] = [];
+  const visit = (value: any) => {
+    if (Array.isArray(value)) {
+      if (value.length > 0 && value.every((v) => typeof v === "string")) {
+        value.forEach((v) => {
+          if (v && v.length < 200) results.push(v);
+        });
+      } else if (
+        value.length > 0 &&
+        value.every(
+          (v) => Array.isArray(v) && typeof v[0] === "string",
+        )
+      ) {
+        value.forEach((v) => {
+          if (v[0] && v[0].length < 200) results.push(v[0]);
+        });
+      } else {
+        value.forEach(visit);
+      }
+    }
+  };
+  visit(node);
+  return Array.from(new Set(results)).filter(Boolean);
 }
