@@ -1,7 +1,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/supabase";
-import { GraduationCap, Shield, UserCheck, Users, UserX } from "lucide-react";
+import { GraduationCap, Shield, UserCheck, Users, UserX, Plus, Pencil } from "lucide-react";
+import Link from "next/link";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
@@ -95,6 +96,14 @@ export default async function AdminUsersPage({
             View and manage platform users
           </p>
         </div>
+        <Link href="/admin/users/new">
+          <div className="inline-flex">
+            <button className="inline-flex items-center justify-center rounded-lg text-sm font-medium ring-offset-background transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 active:scale-[0.98] h-10 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90">
+              <Plus className="w-4 h-4 mr-2" />
+              Add User
+            </button>
+          </div>
+        </Link>
       </div>
 
       {/* Stats */}
@@ -281,6 +290,9 @@ export default async function AdminUsersPage({
                     <th className="text-center font-semibold py-4 px-6">
                       Status
                     </th>
+                    <th className="text-right font-semibold py-4 px-6">
+                      Action
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y border-t">
@@ -339,6 +351,15 @@ export default async function AdminUsersPage({
                           )}
                           {user.is_active ? "ACTIVE" : "INACTIVE"}
                         </span>
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <Link
+                          href={`/admin/users/${user.id}`}
+                          className="inline-flex items-center text-xs text-primary hover:underline"
+                        >
+                          <Pencil className="w-3 h-3 mr-1" />
+                          Edit
+                        </Link>
                       </td>
                     </tr>
                   )})}

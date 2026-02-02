@@ -84,6 +84,7 @@ export async function PATCH(
     const allowedFields = [
       "name",
       "role",
+      "email",
       "roll_no",
       "batch",
       "section",
@@ -155,17 +156,29 @@ export async function DELETE(
       );
     }
 
-    // Soft delete - just deactivate
-    const { error } = await supabase
+    // Try hard delete first, fallback to deactivation if constrained
+    const { error: deleteError } = await supabase
+      .from("profiles")
+      .delete()
+      .eq("id", params.id);
+
+    if (!deleteError) {
+      return NextResponse.json({ success: true, message: "User deleted" });
+    }
+
+    const { error: deactivateError } = await supabase
       .from("profiles")
       .update({ is_active: false })
       .eq("id", params.id);
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
+    if (deactivateError) {
+      return NextResponse.json({ error: deactivateError.message }, { status: 400 });
     }
 
-    return NextResponse.json({ success: true, message: "User deactivated" });
+    return NextResponse.json({
+      success: true,
+      message: "User deactivated (delete blocked by references)",
+    });
   } catch (error) {
     console.error("Error deactivating user:", error);
     return NextResponse.json(

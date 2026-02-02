@@ -38,10 +38,18 @@ export default function StudentProfilePage() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      if (profile.email) {
+        const { error: authError } = await supabase.auth.updateUser({
+          email: profile.email,
+        });
+        if (authError) throw authError;
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
           name: profile.name,
+          email: profile.email,
           roll_no: profile.roll_no || null,
           batch: profile.batch || null,
           section: profile.section || null,
@@ -124,8 +132,13 @@ export default function StudentProfilePage() {
           </div>
           <div>
             <Label>Email</Label>
-            <Input value={profile?.email || ''} disabled />
-            <p className="text-xs text-muted-foreground mt-1">Email cannot be changed</p>
+            <Input
+              value={profile?.email || ''}
+              onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Email change may require confirmation.
+            </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
