@@ -12,6 +12,7 @@ import {
   Edit,
   FileText,
   Users,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -35,12 +36,24 @@ export default async function AdminTestDetailPage({
     .lte("start_at", nowIso)
     .gte("end_at", nowIso);
 
-  await supabase
+  const { data: closedTests } = await supabase
     .from("tests")
     .update({ status: "closed" })
     .eq("id", params.id)
     .in("status", ["published", "active"])
-    .lt("end_at", nowIso);
+    .lt("end_at", nowIso)
+    .select("id, auto_allocate_on_end");
+
+  if (closedTests?.[0]?.auto_allocate_on_end) {
+    try {
+      await supabase.rpc("allocate_pending_evaluations", {
+        p_test_id: params.id,
+        p_force: false,
+      });
+    } catch (e) {
+      console.error("Allocation batch failed:", e);
+    }
+  }
 
   // Get test with questions
   const { data: test, error } = await supabase
@@ -140,6 +153,12 @@ export default async function AdminTestDetailPage({
             questionsCount={testData.questions?.length || 0}
             durationMinutes={testData.duration_minutes}
           />
+          <form action={`/api/admin/tests/${params.id}/allocate`} method="post">
+            <Button variant="outline" size="sm" type="submit">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Run Allocation
+            </Button>
+          </form>
           <Link href={`/admin/tests/${params.id}/analytics`}>
             <Button variant="outline">
               <BarChart3 className="w-4 h-4 mr-2" />

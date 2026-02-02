@@ -56,6 +56,7 @@ const testSchema = z.object({
   endAt: z.string().min(1, "End time is required"),
   evaluatorsPerSubmission: z.number().min(1).max(5),
   sameBatchOnly: z.boolean(),
+  autoAllocateOnEnd: z.boolean(),
   targetBatch: z.string().optional(),
   questions: z
     .array(questionSchema)
@@ -115,6 +116,7 @@ export default function CreateTestPage() {
       endAt: "",
       evaluatorsPerSubmission: 2,
       sameBatchOnly: true,
+      autoAllocateOnEnd: true,
       targetBatch: "",
       questions: [{ ...defaultQuestion }],
     },
@@ -353,6 +355,7 @@ export default function CreateTestPage() {
           status,
           evaluators_per_submission: data.evaluatorsPerSubmission,
           same_batch_only: data.sameBatchOnly,
+          auto_allocate_on_end: data.autoAllocateOnEnd,
           target_batch: data.targetBatch || null,
           created_by: profile.id,
         } as any)
@@ -906,6 +909,17 @@ export default function CreateTestPage() {
                     />
                     <Label htmlFor="sameBatchOnly" className="cursor-pointer">
                       Same batch only
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="autoAllocateOnEnd"
+                      {...register("autoAllocateOnEnd")}
+                      className="w-4 h-4"
+                    />
+                    <Label htmlFor="autoAllocateOnEnd" className="cursor-pointer">
+                      Auto-allocate evaluations when test ends
                     </Label>
                   </div>
                   <div className="space-y-2 mt-4">

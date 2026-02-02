@@ -48,11 +48,28 @@ export default async function AdminTestsPage({
     .lte("start_at", nowIso)
     .gte("end_at", nowIso);
 
-  await supabase
+  const { data: closedTests } = await supabase
     .from("tests")
     .update({ status: "closed" })
     .in("status", ["published", "active"])
-    .lt("end_at", nowIso);
+    .lt("end_at", nowIso)
+    .select("id, auto_allocate_on_end");
+
+  const closedIds =
+    (closedTests as any[] | null)
+      ?.filter((t: any) => t.auto_allocate_on_end)
+      .map((t: any) => t.id) || [];
+
+  for (const testId of closedIds) {
+    try {
+      await supabase.rpc("allocate_pending_evaluations", {
+        p_test_id: testId,
+        p_force: false,
+      });
+    } catch (e) {
+      console.error("Allocation batch failed:", e);
+    }
+  }
 
   // Get tests
   let testsQuery = supabase

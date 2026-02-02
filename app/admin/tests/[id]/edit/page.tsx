@@ -98,6 +98,7 @@ export default function AdminTestEditPage({
           status: test.status,
           evaluators_per_submission: test.evaluators_per_submission,
           same_batch_only: test.same_batch_only,
+          auto_allocate_on_end: test.auto_allocate_on_end,
         } as any)
         .eq("id", params.id);
 
@@ -264,6 +265,20 @@ export default function AdminTestEditPage({
             <Label htmlFor="sameBatchOnly" className="cursor-pointer">
               Same batch only (students can only evaluate peers from their
               batch)
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="autoAllocateOnEnd"
+              checked={test?.auto_allocate_on_end ?? true}
+              onChange={(e) =>
+                setTest({ ...test, auto_allocate_on_end: e.target.checked })
+              }
+              className="w-4 h-4"
+            />
+            <Label htmlFor="autoAllocateOnEnd" className="cursor-pointer">
+              Auto-allocate evaluations when test ends
             </Label>
           </div>
         </CardContent>

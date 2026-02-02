@@ -66,6 +66,7 @@ export type Database = {
                     no_repeat_horizon: number;
                     eval_start_at: string | null;
                     eval_end_at: string | null;
+                    auto_allocate_on_end: boolean;
                     target_batch: string | null;
                     created_by: string;
                     created_at: string;
@@ -85,6 +86,7 @@ export type Database = {
                     no_repeat_horizon?: number;
                     eval_start_at?: string | null;
                     eval_end_at?: string | null;
+                    auto_allocate_on_end?: boolean;
                     target_batch?: string | null;
                     created_by: string;
                     created_at?: string;
@@ -104,6 +106,7 @@ export type Database = {
                     no_repeat_horizon?: number;
                     eval_start_at?: string | null;
                     eval_end_at?: string | null;
+                    auto_allocate_on_end?: boolean;
                     target_batch?: string | null;
                     created_by?: string;
                     created_at?: string;
@@ -571,6 +574,13 @@ export type Database = {
                     status: string;
                     deadline: string | null;
                 }[];
+            };
+            allocate_pending_evaluations: {
+                Args: {
+                    p_test_id: string;
+                    p_force?: boolean;
+                };
+                Returns: number;
             };
             get_anonymized_submission: {
                 Args: {
