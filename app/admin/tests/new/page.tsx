@@ -99,6 +99,25 @@ export default function CreateTestPage() {
   const [googleFormsUrl, setGoogleFormsUrl] = useState("");
   const [importing, setImporting] = useState(false);
 
+  useEffect(() => {
+    const storedProvider = localStorage.getItem("aiProvider");
+    const storedKey = localStorage.getItem("aiApiKey");
+    if (storedProvider) setAiProvider(storedProvider);
+    if (storedKey) setAiApiKey(storedKey);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("aiProvider", aiProvider);
+  }, [aiProvider]);
+
+  useEffect(() => {
+    if (aiApiKey) {
+      localStorage.setItem("aiApiKey", aiApiKey);
+    } else {
+      localStorage.removeItem("aiApiKey");
+    }
+  }, [aiApiKey]);
+
   const {
     register,
     control,
@@ -521,7 +540,7 @@ export default function CreateTestPage() {
                       }
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Leave empty to use server-configured key
+                      Saved locally in this browser. Leave empty to use server-configured key.
                     </p>
                   </div>
                 </div>
