@@ -11,7 +11,7 @@ export async function POST(
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.redirect(new URL("/auth/login", request.url));
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { data: profile } = await supabase
@@ -169,5 +169,5 @@ export async function POST(
     return NextResponse.json({ error: testDeleteError.message }, { status: 500 });
   }
 
-  return NextResponse.redirect(new URL("/admin/tests", request.url));
+  return NextResponse.json({ success: true });
 }

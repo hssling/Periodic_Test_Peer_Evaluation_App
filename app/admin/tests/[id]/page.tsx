@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PublishTestButton } from "@/components/admin/publish-test-button";
+import { PurgeTestButton } from "@/components/admin/purge-test-button";
 import { createClient } from "@/lib/supabase/server";
 import { LocalDateTime } from "@/components/shared/local-datetime";
 import { getTestStatus } from "@/lib/utils";
@@ -329,14 +330,7 @@ export default async function AdminTestDetailPage({
                   Download Full Test Data
                 </Button>
               </a>
-              <form
-                action={`/api/admin/tests/${params.id}/purge`}
-                method="post"
-              >
-                <Button variant="destructive" className="w-full" type="submit">
-                  Delete Test Data
-                </Button>
-              </form>
+              <PurgeTestButton testId={params.id} />
               <p className="text-xs text-muted-foreground">
                 This permanently deletes the test and all related data.
               </p>
