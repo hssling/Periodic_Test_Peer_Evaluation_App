@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate, getTestStatus } from "@/lib/utils";
+import { LocalDateTime } from "@/components/shared/local-datetime";
+import { getTestStatus } from "@/lib/utils";
 import { ArrowLeft, Clock, FileText, Play } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -126,7 +127,7 @@ export default async function StudentTestDetailPage({
             )
           ) : status === "upcoming" ? (
             <Button disabled className="w-full" size="lg">
-              Test starts at {formatDate(test.start_at)}
+              Test starts at <LocalDateTime value={test.start_at} />
             </Button>
           ) : (
             <Button disabled className="w-full" size="lg">

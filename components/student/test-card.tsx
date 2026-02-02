@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Clock, Calendar, Award, ArrowRight, CheckCircle, Play } from 'lucide-react';
-import { formatDate, formatDuration } from '@/lib/utils';
+import { LocalDateTime } from '@/components/shared/local-datetime';
+import { formatDuration } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import type { Tables } from '@/types/supabase';
@@ -73,7 +74,11 @@ export function TestCard({ test, attempt, status }: TestCardProps) {
         if (status === 'upcoming') {
             return (
                 <Button variant="outline" disabled className="w-full">
-                    Starts {formatDate(test.start_at, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    Starts{" "}
+                    <LocalDateTime
+                        value={test.start_at}
+                        options={{ month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }}
+                    />
                 </Button>
             );
         }
@@ -174,13 +179,19 @@ export function TestCard({ test, attempt, status }: TestCardProps) {
                 {/* Date info */}
                 <div className="text-xs text-muted-foreground mb-4">
                     {status === 'upcoming' && (
-                        <p>Starts: {formatDate(test.start_at)}</p>
+                        <p>
+                            Starts: <LocalDateTime value={test.start_at} />
+                        </p>
                     )}
                     {status === 'active' && (
-                        <p>Ends: {formatDate(test.end_at)}</p>
+                        <p>
+                            Ends: <LocalDateTime value={test.end_at} />
+                        </p>
                     )}
                     {status === 'ended' && attempt?.submitted_at && (
-                        <p>Submitted: {formatDate(attempt.submitted_at)}</p>
+                        <p>
+                            Submitted: <LocalDateTime value={attempt.submitted_at} />
+                        </p>
                     )}
                 </div>
 

@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate, getTestStatus } from "@/lib/utils";
+import { LocalDateTime } from "@/components/shared/local-datetime";
+import { getTestStatus } from "@/lib/utils";
 import { Database } from "@/types/supabase";
 import {
   ArrowRight,
@@ -128,12 +129,15 @@ export default async function StudentTestsPage() {
                   </div>
                   <div className="text-xs text-muted-foreground mb-4">
                     Ends:{" "}
-                    {formatDate(test.end_at, {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    <LocalDateTime
+                      value={test.end_at}
+                      options={{
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }}
+                    />
                   </div>
                   <Link href={`/student/tests/${test.id}`}>
                     <Button variant="gradient" className="w-full">
@@ -182,12 +186,15 @@ export default async function StudentTestsPage() {
                   </div>
                   <div className="text-xs text-muted-foreground">
                     Starts:{" "}
-                    {formatDate(test.start_at, {
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+                    <LocalDateTime
+                      value={test.start_at}
+                      options={{
+                        month: "short",
+                        day: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }}
+                    />
                   </div>
                 </CardContent>
               </Card>
