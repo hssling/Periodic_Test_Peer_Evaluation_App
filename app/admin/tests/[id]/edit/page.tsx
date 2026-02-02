@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/utils";
 import { ArrowLeft, Clock, FileText, Loader2, Save, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -37,10 +38,10 @@ export default function AdminTestEditPage({
       return;
     }
 
-    // Format dates for datetime-local input
+    // Format dates for datetime-local input (local time)
     const testData = data as any;
-    testData.start_at = testData.start_at?.slice(0, 16) || "";
-    testData.end_at = testData.end_at?.slice(0, 16) || "";
+    testData.start_at = toDateTimeLocalValue(testData.start_at);
+    testData.end_at = toDateTimeLocalValue(testData.end_at);
 
     setTest(testData);
     setLoading(false);
@@ -58,14 +59,21 @@ export default function AdminTestEditPage({
 
     setSaving(true);
     try {
+      const startAtIso = fromDateTimeLocalValue(test.start_at);
+      const endAtIso = fromDateTimeLocalValue(test.end_at);
+
+      if (!startAtIso || !endAtIso) {
+        throw new Error("Invalid start or end time");
+      }
+
       const { error } = await supabase
         .from("tests")
         .update({
           title: test.title,
           description: test.description,
           duration_minutes: test.duration_minutes,
-          start_at: new Date(test.start_at).toISOString(),
-          end_at: new Date(test.end_at).toISOString(),
+          start_at: startAtIso,
+          end_at: endAtIso,
           status: test.status,
           evaluators_per_submission: test.evaluators_per_submission,
           same_batch_only: test.same_batch_only,

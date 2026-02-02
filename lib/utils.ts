@@ -20,6 +20,28 @@ export function formatDate(
   return new Date(date).toLocaleDateString("en-US", defaultOptions);
 }
 
+export function toDateTimeLocalValue(
+  date: string | Date | null | undefined,
+): string {
+  if (!date) return "";
+  const parsed = typeof date === "string" ? new Date(date) : date;
+  if (!(parsed instanceof Date)) return "";
+  if (Number.isNaN(parsed.getTime())) return "";
+  const offsetMs = parsed.getTimezoneOffset() * 60_000;
+  return new Date(parsed.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+export function fromDateTimeLocalValue(value: string): string {
+  if (!value) return "";
+  const [datePart, timePart] = value.split("T");
+  if (!datePart || !timePart) return "";
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+  const local = new Date(year, month - 1, day, hour, minute, 0, 0);
+  if (Number.isNaN(local.getTime())) return "";
+  return local.toISOString();
+}
+
 export function formatDuration(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);

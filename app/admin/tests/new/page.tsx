@@ -31,6 +31,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { fromDateTimeLocalValue } from "@/lib/utils";
 
 const questionSchema = z.object({
   type: z.enum(["mcq_single", "mcq_multi", "short", "long"]),
@@ -313,14 +314,21 @@ export default function CreateTestPage() {
       const profile = profileData as { id: string };
 
       // Create test
+      const startAtIso = fromDateTimeLocalValue(data.startAt);
+      const endAtIso = fromDateTimeLocalValue(data.endAt);
+
+      if (!startAtIso || !endAtIso) {
+        throw new Error("Invalid start or end time");
+      }
+
       const { data: test, error: testError } = await supabase
         .from("tests")
         .insert({
           title: data.title,
           description: data.description || null,
           duration_minutes: data.durationMinutes,
-          start_at: new Date(data.startAt).toISOString(),
-          end_at: new Date(data.endAt).toISOString(),
+          start_at: startAtIso,
+          end_at: endAtIso,
           total_marks: totalMarks,
           status,
           evaluators_per_submission: data.evaluatorsPerSubmission,
