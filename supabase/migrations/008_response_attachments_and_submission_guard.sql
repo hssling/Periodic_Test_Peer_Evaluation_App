@@ -165,6 +165,7 @@ $$;
 -- =====================================================
 -- INCLUDE ATTACHMENTS IN EVALUATION PAYLOAD
 -- =====================================================
+DROP FUNCTION IF EXISTS get_anonymized_submission(UUID);
 CREATE OR REPLACE FUNCTION get_anonymized_submission(p_allocation_id UUID)
 RETURNS TABLE (
     allocation_id UUID,
