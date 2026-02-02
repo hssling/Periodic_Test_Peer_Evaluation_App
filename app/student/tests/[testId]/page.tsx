@@ -109,12 +109,21 @@ export default async function StudentTestDetailPage({
           </div>
 
           {status === "active" ? (
-            <Link href={`/student/tests/${test.id}/attempt`} className="block">
-              <Button variant="gradient" size="lg" className="w-full">
-                <Play className="w-5 h-5 mr-2" />
-                {attempt ? "Continue Attempt" : "Start Test Now"}
-              </Button>
-            </Link>
+            attempt?.status === "submitted" || attempt?.status === "evaluated" ? (
+              <Link href={`/student/results/${attempt.id}`} className="block">
+                <Button variant="gradient" size="lg" className="w-full">
+                  <Play className="w-5 h-5 mr-2" />
+                  View Results
+                </Button>
+              </Link>
+            ) : (
+              <Link href={`/student/tests/${test.id}/attempt`} className="block">
+                <Button variant="gradient" size="lg" className="w-full">
+                  <Play className="w-5 h-5 mr-2" />
+                  {attempt ? "Continue Attempt" : "Start Test Now"}
+                </Button>
+              </Link>
+            )
           ) : status === "upcoming" ? (
             <Button disabled className="w-full" size="lg">
               Test starts at {formatDate(test.start_at)}

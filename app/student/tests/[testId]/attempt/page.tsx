@@ -42,19 +42,6 @@ export default async function TestAttemptPage({
     notFound();
   }
 
-  // Check if test is active
-  const now = new Date();
-  const startAt = new Date(test.start_at);
-  const endAt = new Date(test.end_at);
-
-  if (
-    !["published", "active"].includes(test.status) ||
-    now < startAt ||
-    now > endAt
-  ) {
-    redirect(`/student/tests/${params.testId}?error=not_active`);
-  }
-
   // Get or create attempt
   let attempt = await supabase
     .from("attempts")
@@ -63,6 +50,25 @@ export default async function TestAttemptPage({
     .eq("student_id", profile.id)
     .single()
     .then(({ data }) => data);
+
+  // If already submitted, redirect to results
+  if (attempt && (attempt.status === "submitted" || attempt.status === "evaluated")) {
+    redirect(`/student/results/${attempt.id}`);
+  }
+
+  // Check if test is active for new attempts
+  const now = new Date();
+  const startAt = new Date(test.start_at);
+  const endAt = new Date(test.end_at);
+
+  if (
+    !attempt &&
+    (!["published", "active"].includes(test.status) ||
+      now < startAt ||
+      now > endAt)
+  ) {
+    redirect(`/student/tests/${params.testId}?error=not_active`);
+  }
 
   if (!attempt) {
     // Create new attempt
@@ -90,11 +96,6 @@ export default async function TestAttemptPage({
       action_type: "test_started",
       payload: { test_id: test.id, attempt_id: newAttempt.id },
     });
-  }
-
-  // Check if already submitted
-  if (attempt.status === "submitted" || attempt.status === "evaluated") {
-    redirect(`/student/results/${attempt.id}`);
   }
 
   // Get questions

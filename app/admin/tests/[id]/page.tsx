@@ -2,7 +2,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PublishTestButton } from "@/components/admin/publish-test-button";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate, getTestStatus } from "@/lib/utils";
+import { LocalDateTime } from "@/components/shared/local-datetime";
+import { getTestStatus } from "@/lib/utils";
 import {
   ArrowLeft,
   BarChart3,
@@ -23,6 +24,23 @@ export default async function AdminTestDetailPage({
   params: { id: string };
 }) {
   const supabase = await createClient();
+  const nowIso = new Date().toISOString();
+
+  // Auto-activate/close this test based on schedule.
+  await supabase
+    .from("tests")
+    .update({ status: "active" })
+    .eq("id", params.id)
+    .eq("status", "published")
+    .lte("start_at", nowIso)
+    .gte("end_at", nowIso);
+
+  await supabase
+    .from("tests")
+    .update({ status: "closed" })
+    .eq("id", params.id)
+    .in("status", ["published", "active"])
+    .lt("end_at", nowIso);
 
   // Get test with questions
   const { data: test, error } = await supabase
@@ -247,25 +265,31 @@ export default async function AdminTestDetailPage({
               <div>
                 <p className="text-xs text-muted-foreground">Starts</p>
                 <p className="font-medium">
-                  {formatDate(testData.start_at, {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  <LocalDateTime
+                    value={testData.start_at}
+                    options={{
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }}
+                  />
                 </p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Ends</p>
                 <p className="font-medium">
-                  {formatDate(testData.end_at, {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
+                  <LocalDateTime
+                    value={testData.end_at}
+                    options={{
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }}
+                  />
                 </p>
               </div>
             </CardContent>

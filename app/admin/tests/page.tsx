@@ -39,6 +39,21 @@ export default async function AdminTestsPage({
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  const nowIso = new Date().toISOString();
+  // Auto-activate/close tests based on schedule so filters stay accurate.
+  await supabase
+    .from("tests")
+    .update({ status: "active" })
+    .eq("status", "published")
+    .lte("start_at", nowIso)
+    .gte("end_at", nowIso);
+
+  await supabase
+    .from("tests")
+    .update({ status: "closed" })
+    .in("status", ["published", "active"])
+    .lt("end_at", nowIso);
+
   // Get tests
   let testsQuery = supabase
     .from("tests")

@@ -86,16 +86,6 @@ export function TestAttemptClient({
       responses[qId]?.answer_text || responses[qId]?.selected_options?.length,
   ).length;
 
-  // Auto-submit when time runs out
-  const handleAutoSubmit = useCallback(async () => {
-    toast({
-      variant: "warning",
-      title: "Time is up!",
-      description: "Your test is being submitted automatically.",
-    });
-    await handleSubmit();
-  }, [handleSubmit, toast]);
-
   const retryOperation = useCallback(
     async <T,>(operation: () => Promise<T>, retries = 3) => {
       let attemptCount = 0;
@@ -165,32 +155,6 @@ export function TestAttemptClient({
     [attempt.id, retryOperation, supabase, toast],
   );
 
-  // Handle paste attempt
-  const handlePasteAttempt = useCallback(() => {
-    setViolations((prev) => {
-      const newCount = prev.pasteAttempts + 1;
-      supabase
-        .from("attempts")
-        .update({
-          paste_attempts: newCount,
-          violations: [
-            ...baseViolations,
-            { type: "paste_attempt", timestamp: new Date().toISOString() },
-          ],
-        })
-        .eq("id", attempt.id);
-
-      toast({
-        variant: "warning",
-        title: "Paste blocked",
-        description:
-          "Copy-paste is disabled for this test. Please type your answer.",
-      });
-
-      return { ...prev, pasteAttempts: newCount };
-    });
-  }, [attempt.id, baseViolations, supabase, toast]);
-
   // Submit test
   const handleSubmit = useCallback(async () => {
     if (isSubmitting) return;
@@ -246,6 +210,42 @@ export function TestAttemptClient({
       setShowSubmitDialog(false);
     }
   }, [attempt.id, isSubmitting, router, supabase, toast]);
+
+  // Auto-submit when time runs out
+  const handleAutoSubmit = useCallback(async () => {
+    toast({
+      variant: "warning",
+      title: "Time is up!",
+      description: "Your test is being submitted automatically.",
+    });
+    await handleSubmit();
+  }, [handleSubmit, toast]);
+
+  // Handle paste attempt
+  const handlePasteAttempt = useCallback(() => {
+    setViolations((prev) => {
+      const newCount = prev.pasteAttempts + 1;
+      supabase
+        .from("attempts")
+        .update({
+          paste_attempts: newCount,
+          violations: [
+            ...baseViolations,
+            { type: "paste_attempt", timestamp: new Date().toISOString() },
+          ],
+        })
+        .eq("id", attempt.id);
+
+      toast({
+        variant: "warning",
+        title: "Paste blocked",
+        description:
+          "Copy-paste is disabled for this test. Please type your answer.",
+      });
+
+      return { ...prev, pasteAttempts: newCount };
+    });
+  }, [attempt.id, baseViolations, supabase, toast]);
 
   // Timer effect
   useEffect(() => {
