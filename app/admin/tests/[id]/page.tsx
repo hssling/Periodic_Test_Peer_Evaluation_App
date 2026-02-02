@@ -314,6 +314,35 @@ export default async function AdminTestDetailPage({
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Data & Exports</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <a href={`/api/admin/tests/${params.id}/scores`}>
+                <Button variant="outline" className="w-full">
+                  Download Score Sheet (CSV)
+                </Button>
+              </a>
+              <a href={`/api/admin/tests/${params.id}/export`}>
+                <Button variant="outline" className="w-full">
+                  Download Full Test Data
+                </Button>
+              </a>
+              <form
+                action={`/api/admin/tests/${params.id}/purge`}
+                method="post"
+              >
+                <Button variant="destructive" className="w-full" type="submit">
+                  Delete Test Data
+                </Button>
+              </form>
+              <p className="text-xs text-muted-foreground">
+                This permanently deletes the test and all related data.
+              </p>
+            </CardContent>
+          </Card>
+
           {/* Timing */}
           <Card>
             <CardHeader>

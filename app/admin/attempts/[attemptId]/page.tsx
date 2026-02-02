@@ -51,6 +51,9 @@ export default async function AdminAttemptDetailPage({
   const responseMap = new Map(
     (responses || []).map((r: any) => [r.question_id, r]),
   );
+  const questionMap = new Map(
+    (questions || []).map((q: any) => [q.id, q]),
+  );
 
   return (
     <div className="space-y-6">
@@ -152,14 +155,27 @@ export default async function AdminAttemptDetailPage({
                         </p>
                       )}
                       {(allocation.evaluation.items || []).length > 0 && (
-                        <div className="space-y-1">
+                        <div className="space-y-2">
                           {(allocation.evaluation.items || []).map(
-                            (item: any) => (
-                              <div key={item.id} className="text-xs">
-                                Q{item.question_id.slice(0, 6)}: {item.score}
-                                {item.feedback ? ` • ${item.feedback}` : ""}
-                              </div>
-                            ),
+                            (item: any, index: number) => {
+                              const question = questionMap.get(item.question_id);
+                              return (
+                                <div key={item.id} className="rounded-md border p-2 text-xs">
+                                  <p className="font-medium">
+                                    Q{index + 1}: {question?.prompt || item.question_id}
+                                  </p>
+                                  <p className="text-muted-foreground">
+                                    Score: {item.score}
+                                    {question?.max_marks ? ` / ${question.max_marks}` : ""}
+                                  </p>
+                                  {item.feedback && (
+                                    <p className="text-muted-foreground">
+                                      Feedback: {item.feedback}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            },
                           )}
                         </div>
                       )}

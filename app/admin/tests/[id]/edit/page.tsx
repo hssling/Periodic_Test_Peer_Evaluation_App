@@ -99,6 +99,7 @@ export default function AdminTestEditPage({
           evaluators_per_submission: test.evaluators_per_submission,
           same_batch_only: test.same_batch_only,
           auto_allocate_on_end: test.auto_allocate_on_end,
+          target_batch: test.target_batch || null,
         } as any)
         .eq("id", params.id);
 
@@ -280,6 +281,18 @@ export default function AdminTestEditPage({
             <Label htmlFor="autoAllocateOnEnd" className="cursor-pointer">
               Auto-allocate evaluations when test ends
             </Label>
+          </div>
+          <div>
+            <Label>Target Batch (Optional)</Label>
+            <Input
+              value={test?.target_batch || ""}
+              onChange={(e) =>
+                setTest({ ...test, target_batch: e.target.value })
+              }
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Limit test visibility and allocations to this batch.
+            </p>
           </div>
         </CardContent>
       </Card>

@@ -42,6 +42,9 @@ export default function StudentProfilePage() {
         .from('profiles')
         .update({
           name: profile.name,
+          roll_no: profile.roll_no || null,
+          batch: profile.batch || null,
+          section: profile.section || null,
         } as any)
         .eq('id', profile.id);
 
@@ -127,7 +130,12 @@ export default function StudentProfilePage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Roll Number</Label>
-              <Input value={profile?.roll_no || '-'} disabled />
+              <Input
+                value={profile?.roll_no || ''}
+                onChange={(e) =>
+                  setProfile({ ...profile, roll_no: e.target.value })
+                }
+              />
             </div>
             <div>
               <Label>Role</Label>
@@ -137,11 +145,21 @@ export default function StudentProfilePage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label>Batch</Label>
-              <Input value={profile?.batch || '-'} disabled />
+              <Input
+                value={profile?.batch || ''}
+                onChange={(e) =>
+                  setProfile({ ...profile, batch: e.target.value })
+                }
+              />
             </div>
             <div>
               <Label>Group</Label>
-              <Input value={profile?.section || '-'} disabled />
+              <Input
+                value={profile?.section || ''}
+                onChange={(e) =>
+                  setProfile({ ...profile, section: e.target.value })
+                }
+              />
             </div>
           </div>
           <Button variant="gradient" onClick={handleSave} disabled={saving}>

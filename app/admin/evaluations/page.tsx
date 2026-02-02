@@ -23,7 +23,7 @@ export default async function AdminEvaluationsPage({
   let allocationsQuery = supabase
     .from('allocations')
     .select(
-      '*, attempt:attempts(*, test:tests(*), student:profiles(*)), evaluator:profiles(*)',
+      '*, attempt:attempts(*, test:tests(*), student:profiles(*)), evaluator:profiles(*), evaluation:evaluations(total_score, submitted_at)',
       { count: 'exact' },
     )
     .order('allocated_at', { ascending: false })
@@ -145,8 +145,10 @@ export default async function AdminEvaluationsPage({
                     <th className="text-left py-3 px-2">Test</th>
                     <th className="text-left py-3 px-2 hidden sm:table-cell">Evaluator</th>
                     <th className="text-left py-3 px-2 hidden md:table-cell">Submission</th>
+                    <th className="text-left py-3 px-2 hidden md:table-cell">Score</th>
                     <th className="text-center py-3 px-2">Status</th>
                     <th className="text-left py-3 px-2 hidden lg:table-cell">Allocated</th>
+                    <th className="text-right py-3 px-2">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -156,6 +158,9 @@ export default async function AdminEvaluationsPage({
                       <td className="py-3 px-2 hidden sm:table-cell">{allocation.evaluator?.name}</td>
                       <td className="py-3 px-2 hidden md:table-cell">
                         {allocation.attempt_id?.slice(0, 8).toUpperCase()}
+                      </td>
+                      <td className="py-3 px-2 hidden md:table-cell">
+                        {allocation.evaluation?.total_score ?? "-"}
                       </td>
                       <td className="py-3 px-2 text-center">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -168,6 +173,14 @@ export default async function AdminEvaluationsPage({
                       </td>
                       <td className="py-3 px-2 hidden lg:table-cell text-muted-foreground">
                         {formatDate(allocation.allocated_at, { month: 'short', day: 'numeric' })}
+                      </td>
+                      <td className="py-3 px-2 text-right">
+                        <a
+                          href={`/admin/attempts/${allocation.attempt_id}`}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          View Attempt
+                        </a>
                       </td>
                     </tr>
               ))}

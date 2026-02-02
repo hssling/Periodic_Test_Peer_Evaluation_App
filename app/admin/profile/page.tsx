@@ -43,7 +43,12 @@ export default function AdminProfilePage() {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ name: profile.name } as any)
+        .update({
+          name: profile.name,
+          roll_no: profile.roll_no || null,
+          batch: profile.batch || null,
+          section: profile.section || null,
+        } as any)
         .eq("id", profile.id);
 
       if (error) throw error;
@@ -138,6 +143,35 @@ export default function AdminProfilePage() {
               <Label>Status</Label>
               <Input value={profile?.is_active ? "Active" : "Inactive"} disabled />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label>Roll Number</Label>
+              <Input
+                value={profile?.roll_no || ""}
+                onChange={(e) =>
+                  setProfile({ ...profile, roll_no: e.target.value })
+                }
+              />
+            </div>
+            <div>
+              <Label>Batch</Label>
+              <Input
+                value={profile?.batch || ""}
+                onChange={(e) =>
+                  setProfile({ ...profile, batch: e.target.value })
+                }
+              />
+            </div>
+          </div>
+          <div>
+            <Label>Group</Label>
+            <Input
+              value={profile?.section || ""}
+              onChange={(e) =>
+                setProfile({ ...profile, section: e.target.value })
+              }
+            />
           </div>
           <Button variant="gradient" onClick={handleSave} disabled={saving}>
             {saving ? (

@@ -43,6 +43,7 @@ export default async function AdminDashboardPage() {
     studentsRes,
     attemptsRes,
     pendingAllocationsRes,
+    rankingRes,
   ] = await Promise.all([
     supabase
       .from("tests")
@@ -60,12 +61,19 @@ export default async function AdminDashboardPage() {
       .from("allocations")
       .select("*", { count: "exact", head: true })
       .eq("status", "pending"),
+    supabase
+      .from("attempts")
+      .select("id, final_score, test:tests(title), student:profiles(name, roll_no)")
+      .eq("status", "evaluated")
+      .order("final_score", { ascending: false })
+      .limit(10),
   ]);
 
   const tests = (testsRes.data || []) as Test[];
   const students = studentsRes.data || [];
   const recentAttempts = (attemptsRes.data || []) as Attempt[];
   const pendingAllocations = pendingAllocationsRes.count || 0;
+  const ranking = (rankingRes.data || []) as any[];
 
   // Calculate stats
   const totalTests = tests.length;
@@ -219,6 +227,48 @@ export default async function AdminDashboardPage() {
                 })
               )}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Rankings */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-lg">Top Rankings</CardTitle>
+            <Link href="/admin/analytics">
+              <Button variant="ghost" size="sm">
+                View analytics
+                <ArrowRight className="w-4 h-4 ml-1" />
+              </Button>
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {ranking.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                No evaluated attempts yet
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {ranking.map((row, index) => (
+                  <div
+                    key={row.id}
+                    className="flex items-center justify-between rounded-lg border p-3"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">
+                        #{index + 1} {row.student?.name || "Unknown Student"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {row.student?.roll_no || "No roll no"} •{" "}
+                        {row.test?.title || "Test"}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold">
+                      {row.final_score ?? "-"}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
