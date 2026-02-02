@@ -20,7 +20,7 @@ import {
   Wand2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -31,7 +31,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { fromDateTimeLocalValue } from "@/lib/utils";
+import { addMinutesToLocalValue, fromDateTimeLocalValue } from "@/lib/utils";
 
 const questionSchema = z.object({
   type: z.enum(["mcq_single", "mcq_multi", "short", "long"]),
@@ -126,9 +126,23 @@ export default function CreateTestPage() {
   });
 
   const watchQuestions = watch("questions");
+  const watchStartAt = watch("startAt");
+  const watchDuration = watch("durationMinutes");
 
   const totalMarks =
     watchQuestions?.reduce((acc, q) => acc + (q.maxMarks || 0), 0) || 0;
+
+  // Auto-compute end time based on duration
+  useEffect(() => {
+    if (!watchStartAt || !watchDuration) return;
+    const computedEnd = addMinutesToLocalValue(
+      watchStartAt,
+      Number(watchDuration),
+    );
+    if (computedEnd) {
+      setValue("endAt", computedEnd);
+    }
+  }, [setValue, watchDuration, watchStartAt]);
 
   const toggleQuestionExpand = (index: number) => {
     setExpandedQuestions((prev) => {
@@ -315,7 +329,13 @@ export default function CreateTestPage() {
 
       // Create test
       const startAtIso = fromDateTimeLocalValue(data.startAt);
-      const endAtIso = fromDateTimeLocalValue(data.endAt);
+      const computedEndLocal = addMinutesToLocalValue(
+        data.startAt,
+        data.durationMinutes,
+      );
+      const endAtIso = fromDateTimeLocalValue(
+        computedEndLocal || data.endAt,
+      );
 
       if (!startAtIso || !endAtIso) {
         throw new Error("Invalid start or end time");
@@ -649,6 +669,7 @@ export default function CreateTestPage() {
                     type="datetime-local"
                     {...register("endAt")}
                     error={errors.endAt?.message}
+                    readOnly
                   />
                 </div>
               </CardContent>

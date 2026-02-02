@@ -7,7 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { fromDateTimeLocalValue, toDateTimeLocalValue } from "@/lib/utils";
+import {
+  addMinutesToLocalValue,
+  fromDateTimeLocalValue,
+  toDateTimeLocalValue,
+} from "@/lib/utils";
 import { ArrowLeft, Clock, FileText, Loader2, Save, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -51,6 +55,17 @@ export default function AdminTestEditPage({
     fetchTest();
   }, [fetchTest]);
 
+  useEffect(() => {
+    if (!test?.start_at || !test?.duration_minutes) return;
+    const computedEnd = addMinutesToLocalValue(
+      test.start_at,
+      Number(test.duration_minutes),
+    );
+    if (computedEnd && computedEnd !== test.end_at) {
+      setTest((prev: any) => ({ ...prev, end_at: computedEnd }));
+    }
+  }, [test?.duration_minutes, test?.end_at, test?.start_at]);
+
   const handleSave = async () => {
     if (!test.title) {
       toast({ variant: "destructive", title: "Title is required" });
@@ -60,7 +75,13 @@ export default function AdminTestEditPage({
     setSaving(true);
     try {
       const startAtIso = fromDateTimeLocalValue(test.start_at);
-      const endAtIso = fromDateTimeLocalValue(test.end_at);
+      const computedEndLocal = addMinutesToLocalValue(
+        test.start_at,
+        test.duration_minutes,
+      );
+      const endAtIso = fromDateTimeLocalValue(
+        computedEndLocal || test.end_at,
+      );
 
       if (!startAtIso || !endAtIso) {
         throw new Error("Invalid start or end time");
@@ -200,6 +221,7 @@ export default function AdminTestEditPage({
               type="datetime-local"
               value={test?.end_at || ""}
               onChange={(e) => setTest({ ...test, end_at: e.target.value })}
+              readOnly
             />
           </div>
         </CardContent>

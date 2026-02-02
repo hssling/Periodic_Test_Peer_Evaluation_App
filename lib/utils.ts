@@ -42,6 +42,21 @@ export function fromDateTimeLocalValue(value: string): string {
   return local.toISOString();
 }
 
+export function addMinutesToLocalValue(
+  value: string,
+  minutesToAdd: number,
+): string {
+  if (!value) return "";
+  const [datePart, timePart] = value.split("T");
+  if (!datePart || !timePart) return "";
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+  const local = new Date(year, month - 1, day, hour, minute, 0, 0);
+  if (Number.isNaN(local.getTime())) return "";
+  local.setMinutes(local.getMinutes() + minutesToAdd);
+  return toDateTimeLocalValue(local);
+}
+
 export function formatDuration(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);

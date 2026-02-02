@@ -138,6 +138,7 @@ export default async function AdminTestDetailPage({
             testId={params.id}
             currentStatus={testData.status}
             questionsCount={testData.questions?.length || 0}
+            durationMinutes={testData.duration_minutes}
           />
           <Link href={`/admin/tests/${params.id}/analytics`}>
             <Button variant="outline">

@@ -11,12 +11,14 @@ interface PublishTestButtonProps {
   testId: string;
   currentStatus: string;
   questionsCount: number;
+  durationMinutes: number;
 }
 
 export function PublishTestButton({
   testId,
   currentStatus,
   questionsCount,
+  durationMinutes,
 }: PublishTestButtonProps) {
   const supabase = getSupabaseClient();
   const router = useRouter();
@@ -36,10 +38,19 @@ export function PublishTestButton({
     setPublishing(true);
     try {
       const newStatus = currentStatus === "draft" ? "published" : "active";
+      const nowIso = new Date().toISOString();
+      const endIso = new Date(
+        Date.now() + durationMinutes * 60 * 1000,
+      ).toISOString();
+
+      const updatePayload =
+        currentStatus === "draft"
+          ? { status: newStatus, start_at: nowIso, end_at: endIso }
+          : { status: newStatus };
 
       const { error } = await supabase
         .from("tests")
-        .update({ status: newStatus })
+        .update(updatePayload)
         .eq("id", testId);
 
       if (error) throw error;
