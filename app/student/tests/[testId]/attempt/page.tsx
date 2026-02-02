@@ -115,12 +115,18 @@ export default async function TestAttemptPage({
     .select("*")
     .eq("attempt_id", attempt.id);
 
+  const { data: attachments } = await supabase
+    .from("attempt_files")
+    .select("*")
+    .eq("attempt_id", attempt.id);
+
   return (
     <TestAttemptClient
       test={test}
       questions={questions}
       attempt={attempt}
       existingResponses={responses || []}
+      existingAttachments={attachments || []}
       profile={profile}
     />
   );

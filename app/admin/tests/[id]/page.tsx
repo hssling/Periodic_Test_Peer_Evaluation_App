@@ -79,6 +79,13 @@ export default async function AdminTestDetailPage({
     .select("id")
     .eq("test_id", params.id);
 
+  const { data: recentAttempts } = await supabase
+    .from("attempts")
+    .select("id, status, submitted_at, student:profiles(name, roll_no)")
+    .eq("test_id", params.id)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
   const { count: pendingReviews } =
     attemptIds && attemptIds.length > 0
       ? await supabase
@@ -216,6 +223,40 @@ export default async function AdminTestDetailPage({
                     </div>
                   ))}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Recent Attempts</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {(recentAttempts || []).length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  No attempts yet.
+                </p>
+              )}
+              {(recentAttempts || []).map((attempt: any) => (
+                <div
+                  key={attempt.id}
+                  className="flex items-center justify-between rounded-lg border p-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium">
+                      {attempt.student?.name || "Unknown Student"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {attempt.student?.roll_no || "No roll no"} •{" "}
+                      {attempt.status}
+                    </p>
+                  </div>
+                  <Link href={`/admin/attempts/${attempt.id}`}>
+                    <Button variant="outline" size="sm">
+                      View
+                    </Button>
+                  </Link>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </div>

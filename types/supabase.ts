@@ -388,6 +388,52 @@ export type Database = {
                     },
                 ];
             };
+            attempt_files: {
+                Row: {
+                    id: string;
+                    attempt_id: string;
+                    uploader_id: string;
+                    file_path: string;
+                    file_name: string;
+                    mime_type: string;
+                    size_bytes: number;
+                    created_at: string;
+                };
+                Insert: {
+                    id?: string;
+                    attempt_id: string;
+                    uploader_id: string;
+                    file_path: string;
+                    file_name: string;
+                    mime_type: string;
+                    size_bytes: number;
+                    created_at?: string;
+                };
+                Update: {
+                    id?: string;
+                    attempt_id?: string;
+                    uploader_id?: string;
+                    file_path?: string;
+                    file_name?: string;
+                    mime_type?: string;
+                    size_bytes?: number;
+                    created_at?: string;
+                };
+                Relationships: [
+                    {
+                        foreignKeyName: 'attempt_files_attempt_id_fkey';
+                        columns: ['attempt_id'];
+                        referencedRelation: 'attempts';
+                        referencedColumns: ['id'];
+                    },
+                    {
+                        foreignKeyName: 'attempt_files_uploader_id_fkey';
+                        columns: ['uploader_id'];
+                        referencedRelation: 'profiles';
+                        referencedColumns: ['id'];
+                    },
+                ];
+            };
             evaluation_items: {
                 Row: {
                     id: string;
@@ -537,6 +583,8 @@ export type Database = {
                     submitted_at: string;
                     questions: Json;
                     responses: Json;
+                    rubrics?: Json;
+                    attachments?: Json;
                 }[];
             };
             calculate_evaluator_metrics: {

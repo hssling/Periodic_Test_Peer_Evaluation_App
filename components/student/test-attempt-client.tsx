@@ -21,7 +21,8 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/components/ui/use-toast";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { cn, formatTimeRemaining } from "@/lib/utils";
+import { AttachmentList, type AttachmentItem } from "@/components/shared/attachment-list";
+import { cn, formatTimeRemaining, sanitizeFilename } from "@/lib/utils";
 import type { Tables } from "@/types/supabase";
 
 interface TestAttemptClientProps {
@@ -29,6 +30,7 @@ interface TestAttemptClientProps {
   questions: Tables<"questions">[];
   attempt: Tables<"attempts">;
   existingResponses: Tables<"responses">[];
+  existingAttachments: AttachmentItem[];
   profile: Tables<"profiles">;
 }
 
@@ -37,6 +39,7 @@ export function TestAttemptClient({
   questions,
   attempt,
   existingResponses,
+  existingAttachments,
   profile,
 }: TestAttemptClientProps) {
   const router = useRouter();
@@ -58,14 +61,24 @@ export function TestAttemptClient({
   const [syncStatus, setSyncStatus] = useState<
     Record<string, "pending" | "syncing" | "synced" | "error">
   >({});
-  const [timeRemaining, setTimeRemaining] = useState<number>(() => {
+  const initialTimeSpent = useMemo(() => {
     const startedAt = new Date(attempt.started_at).getTime();
-    const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+    const elapsed = Number.isNaN(startedAt)
+      ? 0
+      : Math.floor((Date.now() - startedAt) / 1000);
+    return Math.max(attempt.time_spent_seconds || 0, elapsed);
+  }, [attempt.started_at, attempt.time_spent_seconds]);
+
+  const [timeRemaining, setTimeRemaining] = useState<number>(() => {
     const total = test.duration_minutes * 60;
-    return Math.max(0, total - elapsed);
+    return Math.max(0, total - initialTimeSpent);
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [attachments, setAttachments] = useState<AttachmentItem[]>(
+    existingAttachments || [],
+  );
+  const [uploadingIds, setUploadingIds] = useState<Set<string>>(new Set());
   const [violations, setViolations] = useState({
     tabSwitches: attempt.tab_switches || 0,
     pasteAttempts: attempt.paste_attempts || 0,
@@ -77,7 +90,7 @@ export function TestAttemptClient({
 
   // Refs for tracking
   const saveTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
-  const timeSpentRef = useRef(attempt.time_spent_seconds || 0);
+  const timeSpentRef = useRef(initialTimeSpent);
 
   // Current question
   const currentQuestion = questions[currentQuestionIndex];
@@ -168,6 +181,26 @@ export function TestAttemptClient({
     setIsSubmitting(true);
 
     try {
+      const pendingResponses = Object.entries(responses);
+      if (pendingResponses.length > 0) {
+        await Promise.all(
+          pendingResponses.map(([questionId, response]) =>
+            retryOperation(() =>
+              supabase.from("responses").upsert(
+                {
+                  attempt_id: attempt.id,
+                  question_id: questionId,
+                  answer_text: response.answer_text || null,
+                  selected_options: response.selected_options || null,
+                  saved_at: new Date().toISOString(),
+                },
+                { onConflict: "attempt_id,question_id" },
+              ),
+            ),
+          ),
+        );
+      }
+
       // Sync final time spent before submission
       await supabase
         .from("attempts")
@@ -221,6 +254,63 @@ export function TestAttemptClient({
     await handleSubmit();
   }, [handleSubmit, toast]);
 
+  const handleUploadFile = useCallback(
+    async (file: File) => {
+      const uploadId = crypto.randomUUID();
+      setUploadingIds((prev) => new Set(prev).add(uploadId));
+      try {
+        const filePath = `attempts/${attempt.id}/${Date.now()}_${sanitizeFilename(
+          file.name,
+        )}`;
+
+        const { data: record, error: insertError } = await supabase
+          .from("attempt_files")
+          .insert({
+            attempt_id: attempt.id,
+            uploader_id: profile.id,
+            file_path: filePath,
+            file_name: file.name,
+            mime_type: file.type || "application/octet-stream",
+            size_bytes: file.size,
+          })
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+
+        const { error: uploadError } = await supabase.storage
+          .from("attempt-uploads")
+          .upload(filePath, file, { upsert: false });
+
+        if (uploadError) {
+          await supabase.from("attempt_files").delete().eq("id", record.id);
+          throw uploadError;
+        }
+
+        setAttachments((prev) => [...prev, record as AttachmentItem]);
+        toast({
+          variant: "success",
+          title: "File uploaded",
+          description: file.name,
+        });
+      } catch (error: any) {
+        console.error("Upload failed:", error);
+        toast({
+          variant: "destructive",
+          title: "Upload failed",
+          description: error.message || "Please try again.",
+        });
+      } finally {
+        setUploadingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(uploadId);
+          return next;
+        });
+      }
+    },
+    [attempt.id, profile.id, supabase, toast],
+  );
+
   // Handle paste attempt
   const handlePasteAttempt = useCallback(() => {
     setViolations((prev) => {
@@ -249,20 +339,18 @@ export function TestAttemptClient({
 
   // Timer effect
   useEffect(() => {
+    const total = test.duration_minutes * 60;
     const timer = setInterval(() => {
-      setTimeRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          handleAutoSubmit();
-          return 0;
-        }
-        return prev - 1;
-      });
-
-      // Update time spent
       timeSpentRef.current += 1;
+      const remaining = Math.max(0, total - timeSpentRef.current);
+      setTimeRemaining(remaining);
 
-      // Sync time spent every 30 seconds
+      if (remaining <= 0) {
+        clearInterval(timer);
+        handleAutoSubmit();
+        return;
+      }
+
       if (timeSpentRef.current % 30 === 0) {
         supabase
           .from("attempts")
@@ -272,7 +360,7 @@ export function TestAttemptClient({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [attempt.id, handleAutoSubmit, supabase]);
+  }, [attempt.id, handleAutoSubmit, supabase, test.duration_minutes]);
 
   // Tab visibility tracking
   useEffect(() => {
@@ -504,6 +592,32 @@ export function TestAttemptClient({
               <ChevronRight className="w-4 h-4 ml-2" />
             </Button>
           </div>
+
+          {/* Attachments */}
+          <Card className="mt-6 p-4">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Upload Attachments</h3>
+                <label className="text-xs text-muted-foreground">
+                  PDF, JPG, PNG, DOC, DOCX
+                </label>
+              </div>
+              <input
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                onChange={(e) => {
+                  const files = e.target.files;
+                  if (!files || files.length === 0) return;
+                  Array.from(files).forEach((file) => handleUploadFile(file));
+                  e.currentTarget.value = "";
+                }}
+              />
+              {uploadingIds.size > 0 && (
+                <p className="text-xs text-muted-foreground">Uploading…</p>
+              )}
+              <AttachmentList files={attachments} />
+            </div>
+          </Card>
         </main>
       </div>
 

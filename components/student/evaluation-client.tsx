@@ -1,5 +1,6 @@
 'use client';
 
+import { AttachmentList } from '@/components/shared/attachment-list';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -45,6 +46,7 @@ export function EvaluationClient({ allocation, submission, existingEvaluation }:
 
   const questions = submission.questions || [];
   const responses = new Map(submission.responses?.map((r: any) => [r.question_id, r]) || []);
+  const attachments = submission.attachments || [];
   const currentQuestion = questions[currentQuestionIndex];
   const currentResponse = responses.get(currentQuestion?.id);
 
@@ -272,6 +274,15 @@ export function EvaluationClient({ allocation, submission, existingEvaluation }:
                 )}
               </div>
             </div>
+
+            {attachments.length > 0 && (
+              <div>
+                <Label className="text-muted-foreground">Attachments</Label>
+                <div className="mt-2">
+                  <AttachmentList files={attachments} />
+                </div>
+              </div>
+            )}
 
             {/* Score input */}
             <div className="flex items-center gap-4">
