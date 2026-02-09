@@ -15,7 +15,7 @@ export default async function SettingsRedirect() {
     .from("profiles")
     .select("role")
     .eq("user_id", user.id)
-    .single();
+    .maybeSingle();
 
   if (!profile) {
     redirect("/auth/login?error=no_profile");

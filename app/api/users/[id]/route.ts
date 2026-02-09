@@ -1,6 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
+function normalizeBatch(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const yearMatch = trimmed.match(/(19|20)\d{2}/);
+  return yearMatch ? yearMatch[0] : null;
+}
+
 // GET - Fetch user profile
 export async function GET(
   request: NextRequest,
@@ -97,6 +105,22 @@ export async function PATCH(
       if (body[field] !== undefined) {
         updates[field] = body[field];
       }
+    }
+
+    if (typeof updates.name === "string") {
+      updates.name = updates.name.trim();
+    }
+    if (typeof updates.email === "string") {
+      updates.email = updates.email.trim().toLowerCase();
+    }
+    if (typeof updates.roll_no === "string") {
+      updates.roll_no = updates.roll_no.trim() || null;
+    }
+    if (updates.batch !== undefined) {
+      updates.batch = normalizeBatch(updates.batch);
+    }
+    if (typeof updates.section === "string") {
+      updates.section = updates.section.trim() || null;
     }
 
     if (Object.keys(updates).length === 0) {

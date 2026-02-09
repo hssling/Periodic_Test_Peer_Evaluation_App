@@ -8,14 +8,9 @@ const publicRoutes = [
   "/auth/signup",
   "/auth/register",
   "/auth/reset-password",
+  "/auth/update-password",
   "/auth/callback",
 ];
-
-// Routes that require admin/faculty role
-const adminRoutes = ["/admin"];
-
-// Routes that require student role
-const studentRoutes = ["/student"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -29,7 +24,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const { response, user, supabase } = await updateSession(request);
+  const { response, user } = await updateSession(request);
 
   // Check if route is public
   const isPublicRoute = publicRoutes.some(
@@ -43,49 +38,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // If authenticated and supabase is available, get user profile for role-based routing
-  if (user && supabase) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("user_id", user.id)
-      .single();
-
-    const userRole = profile?.role;
-
-    // Redirect authenticated users away from auth pages
+  // Keep middleware lightweight for peak load reliability.
+  // Role routing is enforced in app layouts after profile fetch.
+  if (user) {
     if (
       pathname.startsWith("/auth/login") ||
-      pathname.startsWith("/auth/signup")
+      pathname.startsWith("/auth/signup") ||
+      pathname.startsWith("/auth/register")
     ) {
-      const dashboardUrl =
-        userRole === "admin" || userRole === "faculty"
-          ? "/admin/dashboard"
-          : "/student/dashboard";
-      return NextResponse.redirect(new URL(dashboardUrl, request.url));
-    }
-
-    // Redirect root to appropriate dashboard
-    if (pathname === "/") {
-      const dashboardUrl =
-        userRole === "admin" || userRole === "faculty"
-          ? "/admin/dashboard"
-          : "/student/dashboard";
-      return NextResponse.redirect(new URL(dashboardUrl, request.url));
-    }
-
-    // Check admin route access
-    if (
-      pathname.startsWith("/admin") &&
-      userRole !== "admin" &&
-      userRole !== "faculty"
-    ) {
-      return NextResponse.redirect(new URL("/student/dashboard", request.url));
-    }
-
-    // Check student route access
-    if (pathname.startsWith("/student") && userRole !== "student") {
-      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+      return NextResponse.redirect(new URL("/", request.url));
     }
   }
 

@@ -16,7 +16,7 @@ export default async function HomePage() {
             .from('profiles')
             .select('role')
             .eq('user_id', user.id)
-            .single();
+            .maybeSingle();
         
         const profile = profileData as Pick<Profile, 'role'> | null;
 

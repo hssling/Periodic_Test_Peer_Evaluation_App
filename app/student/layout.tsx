@@ -31,11 +31,11 @@ export default async function StudentLayout({
     }
 
     // Try to get existing profile
-    let { data: profile, error: profileError } = await supabase
+    let { data: profile } = await supabase
       .from("profiles")
       .select("*")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     // If no profile exists, try to create one automatically
     if (!profile) {
@@ -49,18 +49,23 @@ export default async function StudentLayout({
               user.user_metadata?.name ||
               user.email?.split("@")[0] ||
               "Student",
+            roll_no:
+              user.user_metadata?.roll_no || user.user_metadata?.rollNo || null,
+            batch: user.user_metadata?.batch || null,
+            section:
+              user.user_metadata?.section || user.user_metadata?.group || null,
             role: "student",
             is_active: true,
           } as any)
           .select()
-          .single();
+          .maybeSingle();
 
         if (insertError) {
           const { data: existingProfile } = await supabase
             .from("profiles")
             .select("*")
             .eq("user_id", user.id)
-            .single();
+            .maybeSingle();
 
           if (existingProfile) {
             profile = existingProfile;

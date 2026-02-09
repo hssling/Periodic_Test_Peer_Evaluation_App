@@ -32,7 +32,6 @@ type LoginFormData = z.infer<typeof loginSchema>;
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [cooldownUntil, setCooldownUntil] = useState(0);
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -49,21 +48,44 @@ function LoginForm() {
   });
 
   useEffect(() => {
-    const saved = localStorage.getItem("loginCooldownUntil");
-    if (saved) setCooldownUntil(Number(saved));
-  }, []);
+    const registered = searchParams?.get("registered");
+    const passwordUpdated = searchParams?.get("passwordUpdated");
+    const error = searchParams?.get("error");
+
+    if (registered === "true") {
+      toast({
+        variant: "success",
+        title: "Registration complete",
+        description: "You can now sign in.",
+      });
+    }
+
+    if (passwordUpdated === "true") {
+      toast({
+        variant: "success",
+        title: "Password updated",
+        description: "Sign in with your new password.",
+      });
+    }
+
+    if (error === "callback_failed" || error === "callback_session_failed") {
+      toast({
+        variant: "destructive",
+        title: "Login link failed",
+        description: "Please sign in manually or request a new link.",
+      });
+    }
+
+    if (error === "recovery_session_required") {
+      toast({
+        variant: "destructive",
+        title: "Recovery session missing",
+        description: "Please request a new password reset email.",
+      });
+    }
+  }, [searchParams, toast]);
 
   const onSubmit = async (data: LoginFormData) => {
-    const now = Date.now();
-    if (cooldownUntil && now < cooldownUntil) {
-      const seconds = Math.ceil((cooldownUntil - now) / 1000);
-      toast({
-        variant: "warning",
-        title: "Please wait",
-        description: `Try again in ${seconds}s.`,
-      });
-      return;
-    }
     setIsLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -72,13 +94,21 @@ function LoginForm() {
       });
 
       if (error) {
-        const nextCooldown = Date.now() + 10_000;
-        localStorage.setItem("loginCooldownUntil", String(nextCooldown));
-        setCooldownUntil(nextCooldown);
+        const message = error.message.toLowerCase();
+        const isEmailUnverified =
+          message.includes("email not confirmed") ||
+          message.includes("email not verified");
+        const isRateLimited =
+          message.includes("rate limit") || message.includes("too many requests");
+
         toast({
           variant: "destructive",
           title: "Login failed",
-          description: error.message,
+          description: isEmailUnverified
+            ? "Your email is not verified yet. Please verify it or contact admin to activate your account."
+            : isRateLimited
+              ? "Too many login attempts right now. Please retry in a few seconds."
+              : error.message,
         });
         return;
       }

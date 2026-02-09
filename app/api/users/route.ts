@@ -1,6 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 
+function normalizeBatch(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const yearMatch = trimmed.match(/(19|20)\d{2}/);
+  return yearMatch ? yearMatch[0] : null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -30,16 +38,22 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const name = String(body.name || "").trim();
+    const email = String(body.email || "").trim().toLowerCase();
+    const role = String(body.role || "student").trim();
+    const rollNo = typeof body.roll_no === "string" ? body.roll_no.trim() : "";
+    const section = typeof body.section === "string" ? body.section.trim() : "";
+
     const { data: profile, error } = await supabase
       .from("profiles")
       .insert({
         user_id: body.user_id,
-        name: body.name,
-        email: body.email,
-        role: body.role,
-        roll_no: body.roll_no || null,
-        batch: body.batch || null,
-        section: body.section || null,
+        name,
+        email,
+        role: role || "student",
+        roll_no: rollNo || null,
+        batch: normalizeBatch(body.batch),
+        section: section || null,
         is_active: body.is_active ?? true,
       } as any)
       .select()

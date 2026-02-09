@@ -34,11 +34,11 @@ export default async function AdminLayout({
     }
 
     // Try to get existing profile
-    let { data: profileData, error: profileError } = await supabase
+    let { data: profileData } = await supabase
       .from("profiles")
       .select("*")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     // If no profile exists, create one automatically
     if (!profileData) {
@@ -50,11 +50,16 @@ export default async function AdminLayout({
             email: user.email || "",
             name:
               user.user_metadata?.name || user.email?.split("@")[0] || "User",
+            roll_no:
+              user.user_metadata?.roll_no || user.user_metadata?.rollNo || null,
+            batch: user.user_metadata?.batch || null,
+            section:
+              user.user_metadata?.section || user.user_metadata?.group || null,
             role: user.user_metadata?.role || "student",
             is_active: true,
           } as any)
           .select()
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error("Error creating profile:", error);
@@ -62,7 +67,7 @@ export default async function AdminLayout({
             .from("profiles")
             .select("*")
             .eq("user_id", user.id)
-            .single();
+            .maybeSingle();
 
           if (existingProfile) {
             profileData = existingProfile;

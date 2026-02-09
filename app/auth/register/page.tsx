@@ -38,9 +38,12 @@ const registerSchema = z
     email: z.string().email("Please enter a valid email"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string().min(6, "Confirm your password"),
-    rollNo: z.string().min(1, "Roll number is required"),
-    batch: z.string().min(4, "Batch year is required (e.g., 2024)"),
-    section: z.string().optional(),
+    rollNo: z.string().trim().min(1, "Roll number is required"),
+    batch: z
+      .string()
+      .trim()
+      .regex(/^(19|20)\d{2}$/, "Batch must be a 4-digit joining year (e.g., 2024)"),
+    section: z.string().trim().max(10).optional(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -71,16 +74,26 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
     try {
+      const email = data.email.trim().toLowerCase();
+      const name = data.name.trim();
+      const rollNo = data.rollNo.trim();
+      const batch = data.batch.trim();
+      const section = (data.section || "A").trim().toUpperCase();
+
       // Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
+        email,
         password: data.password,
         options: {
+          emailRedirectTo:
+            typeof window !== "undefined"
+              ? `${window.location.origin}/auth/callback`
+              : undefined,
           data: {
-            name: data.name,
-            roll_no: data.rollNo,
-            batch: data.batch,
-            section: data.section || "A",
+            name,
+            roll_no: rollNo,
+            batch,
+            section,
             role: "student",
           },
         },
@@ -92,6 +105,17 @@ export default function RegisterPage() {
           title: "Registration failed",
           description: authError.message,
         });
+        return;
+      }
+
+      if (authData.session) {
+        toast({
+          variant: "success",
+          title: "Registration successful!",
+          description: "Your account is active. Redirecting to dashboard...",
+        });
+        router.push("/student/dashboard");
+        router.refresh();
         return;
       }
 

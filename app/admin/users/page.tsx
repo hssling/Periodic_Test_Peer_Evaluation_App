@@ -285,7 +285,10 @@ export default async function AdminUsersPage({
                       Roll No
                     </th>
                     <th className="text-left font-semibold py-4 px-6 hidden lg:table-cell">
-                      Batch & Group
+                      Batch
+                    </th>
+                    <th className="text-left font-semibold py-4 px-6 hidden xl:table-cell">
+                      Group
                     </th>
                     <th className="text-center font-semibold py-4 px-6">
                       Status
@@ -325,16 +328,14 @@ export default async function AdminUsersPage({
                         {user.roll_no || "-"}
                       </td>
                       <td className="py-4 px-6 hidden lg:table-cell">
-                        <div className="flex items-center gap-2">
-                          <span className="px-2 py-1 bg-primary/10 text-primary rounded-md text-xs font-semibold">
-                            Batch {user.batch || "N/A"}
-                          </span>
-                          {user.section && (
-                            <span className="px-2 py-1 bg-accent/10 text-accent rounded-md text-xs font-semibold">
-                              Group {user.section}
-                            </span>
-                          )}
-                        </div>
+                        <span className="px-2 py-1 bg-primary/10 text-primary rounded-md text-xs font-semibold">
+                          {user.batch || "N/A"}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 hidden xl:table-cell">
+                        <span className="px-2 py-1 bg-accent/10 text-accent rounded-md text-xs font-semibold">
+                          {user.section || "N/A"}
+                        </span>
                       </td>
                       <td className="py-4 px-6 text-center">
                         <span
