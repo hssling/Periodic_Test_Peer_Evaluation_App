@@ -85,6 +85,10 @@ export default async function StudentLayout({
       redirect("/auth/login?error=no_profile");
     }
 
+    if (!(profile as any).is_active) {
+      redirect("/auth/login?error=account_inactive");
+    }
+
     // Redirect admins/faculty to admin dashboard
     if ((profile as any).role !== "student") {
       redirect("/admin/dashboard");

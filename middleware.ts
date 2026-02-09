@@ -38,18 +38,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Keep middleware lightweight for peak load reliability.
-  // Role routing is enforced in app layouts after profile fetch.
-  if (user) {
-    if (
-      pathname.startsWith("/auth/login") ||
-      pathname.startsWith("/auth/signup") ||
-      pathname.startsWith("/auth/register")
-    ) {
-      return NextResponse.redirect(new URL("/", request.url));
-    }
-  }
-
   return response;
 }
 

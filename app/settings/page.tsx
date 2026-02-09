@@ -13,12 +13,16 @@ export default async function SettingsRedirect() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, is_active")
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (!profile) {
     redirect("/auth/login?error=no_profile");
+  }
+
+  if (!profile.is_active) {
+    redirect("/auth/login?error=account_inactive");
   }
 
   const isAdmin = profile.role === "admin" || profile.role === "faculty";

@@ -83,13 +83,30 @@ function LoginForm() {
         description: "Please request a new password reset email.",
       });
     }
+
+    if (error === "account_inactive") {
+      toast({
+        variant: "destructive",
+        title: "Account inactive",
+        description: "Your account is inactive. Please contact admin.",
+      });
+    }
+
+    if (error === "no_profile" || error === "profile_creation_failed") {
+      toast({
+        variant: "destructive",
+        title: "Profile issue",
+        description: "Your profile could not be loaded. Please contact admin.",
+      });
+    }
   }, [searchParams, toast]);
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
+      const email = data.email.trim().toLowerCase();
       const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
+        email,
         password: data.password,
       });
 

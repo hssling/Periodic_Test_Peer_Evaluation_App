@@ -85,6 +85,10 @@ export default async function AdminLayout({
 
     const profile = profileData as Profile | null;
 
+    if (profile && !profile.is_active) {
+      redirect("/auth/login?error=account_inactive");
+    }
+
     // Redirect non-admin users to student dashboard
     if (!profile || (profile.role !== "admin" && profile.role !== "faculty")) {
       redirect("/student/dashboard");
