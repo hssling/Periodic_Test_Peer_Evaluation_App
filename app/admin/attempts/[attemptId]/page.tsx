@@ -45,15 +45,13 @@ export default async function AdminAttemptDetailPage({
 
   const { data: allocations } = await supabase
     .from("allocations")
-    .select("*, evaluator:profiles(*), evaluation:evaluations(*, items:evaluation_items(*))")
+    .select(
+      "*, evaluator:profiles(*), evaluation:evaluations(*, items:evaluation_items(*))",
+    )
     .eq("attempt_id", attempt.id);
 
-  const responseMap = new Map(
-    (responses || []).map((r: any) => [r.question_id, r]),
-  );
-  const questionMap = new Map(
-    (questions || []).map((q: any) => [q.id, q]),
-  );
+  const responseMap = new Map((responses || []).map((r: any) => [r.question_id, r]));
+  const questionMap = new Map((questions || []).map((q: any) => [q.id, q]));
 
   return (
     <div className="space-y-6">
@@ -67,7 +65,7 @@ export default async function AdminAttemptDetailPage({
         <div>
           <h1 className="text-2xl font-bold">Attempt Details</h1>
           <p className="text-muted-foreground">
-            {attempt.test?.title} • {attempt.student?.name}
+            {attempt.test?.title} - {attempt.student?.name}
           </p>
         </div>
       </div>
@@ -87,24 +85,15 @@ export default async function AdminAttemptDetailPage({
                       <p className="font-medium">
                         Q{index + 1}. {q.prompt}
                       </p>
-                      <span className="text-xs text-muted-foreground">
-                        {q.max_marks} marks
-                      </span>
+                      <span className="text-xs text-muted-foreground">{q.max_marks} marks</span>
                     </div>
                     <div className="mt-2 text-sm">
                       {response?.answer_text ? (
-                        <p className="whitespace-pre-wrap">
-                          {response.answer_text}
-                        </p>
+                        <p className="whitespace-pre-wrap">{response.answer_text}</p>
                       ) : response?.selected_options ? (
-                        <p>
-                          Selected:{" "}
-                          {(response.selected_options as string[]).join(", ")}
-                        </p>
+                        <p>Selected: {(response.selected_options as string[]).join(", ")}</p>
                       ) : (
-                        <p className="text-muted-foreground italic">
-                          No response provided
-                        </p>
+                        <p className="text-muted-foreground italic">No response provided</p>
                       )}
                     </div>
                   </div>
@@ -119,45 +108,39 @@ export default async function AdminAttemptDetailPage({
             </CardHeader>
             <CardContent className="space-y-4">
               {(allocations || []).length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  No evaluations yet.
-                </p>
+                <p className="text-sm text-muted-foreground">No evaluations yet.</p>
               )}
-              {(allocations || []).map((allocation: any) => (
-                <div key={allocation.id} className="border rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">
-                        Evaluator: {allocation.evaluator?.name || "Unknown"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Status: {allocation.status}
-                      </p>
-                    </div>
-                    {allocation.evaluation?.submitted_at && (
-                      <span className="text-xs text-muted-foreground">
-                        Submitted{" "}
-                        {formatDate(allocation.evaluation.submitted_at, {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                    )}
-                  </div>
-                  {allocation.evaluation && (
-                    <div className="mt-3 space-y-2 text-sm">
-                      <p className="font-medium">
-                        Total Score: {allocation.evaluation.total_score ?? "-"}
-                      </p>
-                      {allocation.evaluation.overall_feedback && (
-                        <p className="text-muted-foreground whitespace-pre-wrap">
-                          {allocation.evaluation.overall_feedback}
+              {(allocations || []).map((allocation: any) => {
+                const evaluation = Array.isArray(allocation.evaluation)
+                  ? allocation.evaluation[0]
+                  : allocation.evaluation;
+
+                return (
+                  <div key={allocation.id} className="border rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">
+                          Evaluator: {allocation.evaluator?.name || "Unknown"}
                         </p>
+                        <p className="text-xs text-muted-foreground">Status: {allocation.status}</p>
+                      </div>
+                      {evaluation?.submitted_at && (
+                        <span className="text-xs text-muted-foreground">
+                          Submitted {formatDate(evaluation.submitted_at, { month: "short", day: "numeric" })}
+                        </span>
                       )}
-                      {(allocation.evaluation.items || []).length > 0 && (
-                        <div className="space-y-2">
-                          {(allocation.evaluation.items || []).map(
-                            (item: any, index: number) => {
+                    </div>
+                    {evaluation && (
+                      <div className="mt-3 space-y-2 text-sm">
+                        <p className="font-medium">Total Score: {evaluation.total_score ?? "-"}</p>
+                        {evaluation.overall_feedback && (
+                          <p className="text-muted-foreground whitespace-pre-wrap">
+                            {evaluation.overall_feedback}
+                          </p>
+                        )}
+                        {(evaluation.items || []).length > 0 && (
+                          <div className="space-y-2">
+                            {(evaluation.items || []).map((item: any, index: number) => {
                               const question = questionMap.get(item.question_id);
                               return (
                                 <div key={item.id} className="rounded-md border p-2 text-xs">
@@ -169,20 +152,18 @@ export default async function AdminAttemptDetailPage({
                                     {question?.max_marks ? ` / ${question.max_marks}` : ""}
                                   </p>
                                   {item.feedback && (
-                                    <p className="text-muted-foreground">
-                                      Feedback: {item.feedback}
-                                    </p>
+                                    <p className="text-muted-foreground">Feedback: {item.feedback}</p>
                                   )}
                                 </div>
                               );
-                            },
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         </div>
@@ -203,11 +184,7 @@ export default async function AdminAttemptDetailPage({
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Submitted</span>
-                <span>
-                  {attempt.submitted_at
-                    ? formatDate(attempt.submitted_at)
-                    : "-"}
-                </span>
+                <span>{attempt.submitted_at ? formatDate(attempt.submitted_at) : "-"}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Final Score</span>
