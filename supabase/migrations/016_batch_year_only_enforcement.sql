@@ -5,7 +5,7 @@ RETURNS TEXT
 LANGUAGE sql
 IMMUTABLE
 AS $$
-  SELECT substring(COALESCE(p_value, '') from '(19|20)[0-9]{2}');
+  SELECT substring(COALESCE(p_value, '') from '19[0-9]{2}|20[0-9]{2}');
 $$;
 
 UPDATE profiles

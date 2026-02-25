@@ -36,11 +36,11 @@ BEGIN
     );
 
     IF v_batch IS NOT NULL THEN
-        v_batch := substring(v_batch from '(19|20)[0-9]{2}');
+        v_batch := substring(v_batch from '19[0-9]{2}|20[0-9]{2}');
     END IF;
 
     IF v_batch IS NULL AND v_roll_no IS NOT NULL THEN
-        v_batch := substring(v_roll_no from '(19|20)[0-9]{2}');
+        v_batch := substring(v_roll_no from '19[0-9]{2}|20[0-9]{2}');
     END IF;
 
     v_section := COALESCE(
@@ -90,14 +90,14 @@ SET
         NULLIF(TRIM(u.raw_user_meta_data->>'rollNo'), '')
     ),
     batch = COALESCE(
-        substring(NULLIF(p.batch, '') from '(19|20)[0-9]{2}'),
-        substring(NULLIF(TRIM(u.raw_user_meta_data->>'batch'), '') from '(19|20)[0-9]{2}'),
-        substring(NULLIF(TRIM(u.raw_user_meta_data->>'joining_year'), '') from '(19|20)[0-9]{2}'),
-        substring(NULLIF(TRIM(u.raw_user_meta_data->>'joiningYear'), '') from '(19|20)[0-9]{2}'),
+        substring(NULLIF(p.batch, '') from '19[0-9]{2}|20[0-9]{2}'),
+        substring(NULLIF(TRIM(u.raw_user_meta_data->>'batch'), '') from '19[0-9]{2}|20[0-9]{2}'),
+        substring(NULLIF(TRIM(u.raw_user_meta_data->>'joining_year'), '') from '19[0-9]{2}|20[0-9]{2}'),
+        substring(NULLIF(TRIM(u.raw_user_meta_data->>'joiningYear'), '') from '19[0-9]{2}|20[0-9]{2}'),
         substring(COALESCE(
             NULLIF(TRIM(u.raw_user_meta_data->>'roll_no'), ''),
             NULLIF(TRIM(u.raw_user_meta_data->>'rollNo'), '')
-        ) from '(19|20)[0-9]{2}')
+        ) from '19[0-9]{2}|20[0-9]{2}')
     ),
     section = COALESCE(
         NULLIF(p.section, ''),
