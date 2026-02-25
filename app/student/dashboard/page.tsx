@@ -4,7 +4,7 @@ import { TestCard } from "@/components/student/test-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SkeletonDashboard } from "@/components/ui/skeleton";
 import { createClient } from "@/lib/supabase/server";
-import { formatDate, getTestStatus } from "@/lib/utils";
+import { formatDate, getTestStatus, normalizeBatchYear } from "@/lib/utils";
 import {
   AlertCircle,
   CheckCircle,
@@ -51,14 +51,18 @@ export default async function StudentDashboardPage() {
   }
 
   // Fetch all data in parallel for much faster performance
+  const normalizedBatch = normalizeBatchYear(profile.batch);
+  const testsQuery = supabase
+    .from("tests")
+    .select("*")
+    .in("status", ["published", "active", "closed"])
+    .order("start_at", { ascending: false });
+
   const [testsResult, attemptsResult, allocationsResult, announcementsResult] =
     await Promise.all([
-      supabase
-        .from("tests")
-        .select("*")
-        .in("status", ["published", "active", "closed"])
-        .or(`target_batch.is.null,target_batch.eq.${profile.batch}`)
-        .order("start_at", { ascending: false }),
+      normalizedBatch
+        ? testsQuery.or(`target_batch.is.null,target_batch.eq.${normalizedBatch}`)
+        : testsQuery.is("target_batch", null),
 
       supabase
         .from("attempts")
@@ -69,7 +73,7 @@ export default async function StudentDashboardPage() {
         .from("allocations")
         .select("*, attempt:attempts(*, test:tests(*))")
         .eq("evaluator_id", profile.id)
-        .eq("status", "pending"),
+        .in("status", ["pending", "in_progress"]),
 
       supabase
         .from("announcements")

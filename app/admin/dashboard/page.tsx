@@ -43,7 +43,8 @@ export default async function AdminDashboardPage() {
     studentsRes,
     attemptsRes,
     pendingAllocationsRes,
-    rankingRes,
+    rankingAttemptsRes,
+    rankingAllocationsRes,
   ] = await Promise.all([
     supabase
       .from("tests")
@@ -60,20 +61,57 @@ export default async function AdminDashboardPage() {
     supabase
       .from("allocations")
       .select("*", { count: "exact", head: true })
-      .eq("status", "pending"),
+      .in("status", ["pending", "in_progress"]),
     supabase
       .from("attempts")
-      .select("id, final_score, test:tests(title), student:profiles(name, roll_no)")
-      .eq("status", "evaluated")
-      .order("final_score", { ascending: false })
-      .limit(10),
+      .select(
+        "id, status, final_score, test:tests(title), student:profiles(name, roll_no)",
+      )
+      .in("status", ["submitted", "evaluated"])
+      .limit(50),
+    supabase
+      .from("allocations")
+      .select("attempt_id, evaluation:evaluations(total_score)")
+      .eq("status", "completed"),
   ]);
 
   const tests = (testsRes.data || []) as Test[];
   const students = studentsRes.data || [];
   const recentAttempts = (attemptsRes.data || []) as Attempt[];
   const pendingAllocations = pendingAllocationsRes.count || 0;
-  const ranking = (rankingRes.data || []) as any[];
+  const rankingAttempts = (rankingAttemptsRes.data || []) as any[];
+  const rankingAllocations = (rankingAllocationsRes.data || []) as any[];
+  const rankingScores = new Map<string, number[]>();
+
+  rankingAllocations.forEach((allocation: any) => {
+    const evaluation = Array.isArray(allocation.evaluation)
+      ? allocation.evaluation[0]
+      : allocation.evaluation;
+    const score = evaluation?.total_score;
+    if (score === null || score === undefined) return;
+    if (!rankingScores.has(allocation.attempt_id)) {
+      rankingScores.set(allocation.attempt_id, []);
+    }
+    rankingScores.get(allocation.attempt_id)!.push(score);
+  });
+
+  const ranking = rankingAttempts
+    .map((attempt: any) => {
+      const allocationScores = rankingScores.get(attempt.id) || [];
+      const avgAllocationScore =
+        allocationScores.length > 0
+          ? allocationScores.reduce((sum, value) => sum + value, 0) /
+            allocationScores.length
+          : null;
+      const score =
+        attempt.final_score !== null && attempt.final_score !== undefined
+          ? attempt.final_score
+          : avgAllocationScore;
+      return { ...attempt, computed_score: score };
+    })
+    .filter((attempt: any) => attempt.computed_score !== null)
+    .sort((a: any, b: any) => (b.computed_score || 0) - (a.computed_score || 0))
+    .slice(0, 10);
 
   // Calculate stats
   const totalTests = tests.length;
@@ -263,7 +301,9 @@ export default async function AdminDashboardPage() {
                       </p>
                     </div>
                     <p className="text-sm font-semibold">
-                      {row.final_score ?? "-"}
+                      {row.computed_score !== null && row.computed_score !== undefined
+                        ? Math.round(row.computed_score * 100) / 100
+                        : "-"}
                     </p>
                   </div>
                 ))}

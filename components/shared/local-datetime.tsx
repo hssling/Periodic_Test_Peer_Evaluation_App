@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { APP_TIME_ZONE } from "@/lib/utils";
 
 interface LocalDateTimeProps {
   value: string | Date | null | undefined;
@@ -22,10 +23,11 @@ export function LocalDateTime({
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: APP_TIME_ZONE,
       ...options,
     };
     return new Intl.DateTimeFormat("en-US", defaultOptions);
-  }, [JSON.stringify(options)]);
+  }, [options]);
 
   useEffect(() => {
     if (!value) {

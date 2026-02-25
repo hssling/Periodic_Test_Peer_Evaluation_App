@@ -5,19 +5,33 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export const APP_TIME_ZONE =
+  process.env.NEXT_PUBLIC_APP_TIMEZONE || "Asia/Kolkata";
+
 export function formatDate(
   date: string | Date,
   options?: Intl.DateTimeFormatOptions,
 ) {
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return "-";
   const defaultOptions: Intl.DateTimeFormatOptions = {
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: APP_TIME_ZONE,
     ...options,
   };
-  return new Date(date).toLocaleDateString("en-US", defaultOptions);
+  return parsed.toLocaleString("en-US", defaultOptions);
+}
+
+export function normalizeBatchYear(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const yearMatch = trimmed.match(/(19|20)\d{2}/);
+  return yearMatch ? yearMatch[0] : null;
 }
 
 export function toDateTimeLocalValue(

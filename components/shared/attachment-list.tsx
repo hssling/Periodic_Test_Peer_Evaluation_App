@@ -52,9 +52,9 @@ export function AttachmentList({
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              window.open(`${downloadBase}/${file.id}/download`, "_blank")
-            }
+            onClick={() => {
+              window.location.href = `${downloadBase}/${file.id}/download`;
+            }}
           >
             <Download className="mr-2 h-4 w-4" />
             Open

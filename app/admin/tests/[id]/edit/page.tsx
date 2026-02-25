@@ -10,6 +10,7 @@ import { getSupabaseClient } from "@/lib/supabase/client";
 import {
   addMinutesToLocalValue,
   fromDateTimeLocalValue,
+  normalizeBatchYear,
   toDateTimeLocalValue,
 } from "@/lib/utils";
 import {
@@ -284,7 +285,7 @@ export default function AdminTestEditPage({
           evaluators_per_submission: Number(test.evaluators_per_submission),
           same_batch_only: !!test.same_batch_only,
           auto_allocate_on_end: !!test.auto_allocate_on_end,
-          target_batch: test.target_batch?.trim() || null,
+          target_batch: normalizeBatchYear(test.target_batch),
           total_marks: totalMarks,
         } as any)
         .eq("id", params.id);

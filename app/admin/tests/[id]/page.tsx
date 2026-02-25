@@ -86,7 +86,7 @@ export default async function AdminTestDetailPage({
     .from("attempts")
     .select("*", { count: "exact", head: true })
     .eq("test_id", params.id)
-    .eq("status", "submitted");
+    .in("status", ["submitted", "evaluated"]);
 
   const { data: attemptIds } = await supabase
     .from("attempts")

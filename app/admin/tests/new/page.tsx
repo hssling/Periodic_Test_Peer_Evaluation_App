@@ -31,7 +31,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { getSupabaseClient } from "@/lib/supabase/client";
-import { addMinutesToLocalValue, fromDateTimeLocalValue } from "@/lib/utils";
+import {
+  addMinutesToLocalValue,
+  fromDateTimeLocalValue,
+  normalizeBatchYear,
+} from "@/lib/utils";
 
 const questionSchema = z.object({
   type: z.enum(["mcq_single", "mcq_multi", "short", "long"]),
@@ -375,7 +379,7 @@ export default function CreateTestPage() {
           evaluators_per_submission: data.evaluatorsPerSubmission,
           same_batch_only: data.sameBatchOnly,
           auto_allocate_on_end: data.autoAllocateOnEnd,
-          target_batch: data.targetBatch || null,
+          target_batch: normalizeBatchYear(data.targetBatch),
           created_by: profile.id,
         } as any)
         .select()

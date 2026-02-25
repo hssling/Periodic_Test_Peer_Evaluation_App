@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { LocalDateTime } from "@/components/shared/local-datetime";
-import { getTestStatus } from "@/lib/utils";
+import { getTestStatus, normalizeBatchYear } from "@/lib/utils";
 import { ArrowLeft, Clock, FileText, Play } from "lucide-react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -39,9 +39,19 @@ export default async function StudentTestDetailPage({
   // Check if there's an existing attempt
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, batch")
     .eq("user_id", user.id)
     .single();
+
+  if (!profile) {
+    redirect("/auth/login?error=no_profile");
+  }
+
+  const targetBatch = normalizeBatchYear(test.target_batch);
+  const studentBatch = normalizeBatchYear(profile.batch);
+  if (targetBatch && targetBatch !== studentBatch) {
+    notFound();
+  }
 
   const { data: attempt } = await supabase
     .from("attempts")

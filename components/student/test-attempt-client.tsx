@@ -242,7 +242,7 @@ export function TestAttemptClient({
       setIsSubmitting(false);
       setShowSubmitDialog(false);
     }
-  }, [attempt.id, isSubmitting, router, supabase, toast]);
+  }, [attempt.id, isSubmitting, responses, retryOperation, router, supabase, toast]);
 
   // Auto-submit when time runs out
   const handleAutoSubmit = useCallback(async () => {

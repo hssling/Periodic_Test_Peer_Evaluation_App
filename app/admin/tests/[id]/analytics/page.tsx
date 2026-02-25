@@ -79,21 +79,24 @@ export default async function AdminTestAnalyticsPage({
   // Calculate analytics
   const totalAttempts = allAttempts.length;
   const evaluatedAttempts = allAttempts.filter(
-    (attempt) => attempt.status === 'evaluated' && attempt.computed_score !== null,
+    (attempt) => attempt.status === 'evaluated',
   );
-  
-  const scores = evaluatedAttempts.map((attempt) => attempt.computed_score || 0);
+  const scoredAttempts = allAttempts.filter(
+    (attempt) => attempt.computed_score !== null,
+  );
+
+  const scores = scoredAttempts.map((attempt) => attempt.computed_score || 0);
   const averageScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   const highestScore = scores.length > 0 ? Math.max(...scores) : 0;
 
   // Score distribution
   const distribution = {
-    excellent: evaluatedAttempts.filter(a => (a.computed_score / testData.total_marks) >= 0.9).length,
-    good: evaluatedAttempts.filter(a => (a.computed_score / testData.total_marks) >= 0.7 && (a.computed_score / testData.total_marks) < 0.9).length,
-    average: evaluatedAttempts.filter(a => (a.computed_score / testData.total_marks) >= 0.5 && (a.computed_score / testData.total_marks) < 0.7).length,
-    belowAverage: evaluatedAttempts.filter(a => (a.computed_score / testData.total_marks) < 0.5).length,
+    excellent: scoredAttempts.filter(a => (a.computed_score / testData.total_marks) >= 0.9).length,
+    good: scoredAttempts.filter(a => (a.computed_score / testData.total_marks) >= 0.7 && (a.computed_score / testData.total_marks) < 0.9).length,
+    average: scoredAttempts.filter(a => (a.computed_score / testData.total_marks) >= 0.5 && (a.computed_score / testData.total_marks) < 0.7).length,
+    belowAverage: scoredAttempts.filter(a => (a.computed_score / testData.total_marks) < 0.5).length,
   };
-  const distributionBase = evaluatedAttempts.length;
+  const distributionBase = scoredAttempts.length;
 
   return (
     <div className="space-y-6">
@@ -234,11 +237,11 @@ export default async function AdminTestAnalyticsPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {evaluatedAttempts.length === 0 ? (
-              <p className="text-center text-muted-foreground py-4">No evaluated attempts yet</p>
+            {scoredAttempts.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">No scored attempts yet</p>
             ) : (
               <div className="space-y-3">
-                {evaluatedAttempts
+                {scoredAttempts
                   .sort((a, b) => (b.computed_score || 0) - (a.computed_score || 0))
                   .slice(0, 5)
                   .map((attempt, idx) => (
@@ -255,7 +258,6 @@ export default async function AdminTestAnalyticsPage({
                         <p className="font-medium">{attempt.student?.name}</p>
                         <p className="text-xs text-muted-foreground">
                           {attempt.student?.batch && `Batch ${attempt.student.batch}`}
-                          {attempt.student?.section && ` • Group ${attempt.student.section}`}
                         </p>
                       </div>
                       <span className="font-bold text-success">
@@ -301,7 +303,7 @@ export default async function AdminTestAnalyticsPage({
                           {attempt.student?.batch || '-'}
                         </td>
                         <td className="py-3 px-2 text-center">
-                          {attempt.status === 'evaluated'
+                          {attempt.computed_score !== null
                             ? `${Math.round(scoreValue)}/${testData.total_marks}`
                             : '-'}
                         </td>
@@ -311,7 +313,7 @@ export default async function AdminTestAnalyticsPage({
                             percentage >= 60 ? 'text-warning' :
                             'text-destructive'
                           }`}>
-                            {attempt.status === 'evaluated' ? `${percentage}%` : '-'}
+                            {attempt.computed_score !== null ? `${percentage}%` : '-'}
                           </span>
                         </td>
                         <td className="py-3 px-2 text-center">
@@ -336,3 +338,4 @@ export default async function AdminTestAnalyticsPage({
     </div>
   );
 }
+

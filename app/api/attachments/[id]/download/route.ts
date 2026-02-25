@@ -26,7 +26,7 @@ export async function GET(
 
   const { data: file } = await supabase
     .from("attempt_files")
-    .select("*, attempt:attempts(student_id)")
+    .select("id, attempt_id, uploader_id, file_path")
     .eq("id", params.id)
     .single();
 
@@ -35,9 +35,16 @@ export async function GET(
   }
 
   const isAdmin = profile.role === "admin" || profile.role === "faculty";
-  const isOwner = file.uploader_id === profile.id;
+  const isUploader = file.uploader_id === profile.id;
+  const { data: ownAttempt } = await supabase
+    .from("attempts")
+    .select("id")
+    .eq("id", file.attempt_id)
+    .eq("student_id", profile.id)
+    .maybeSingle();
+  const isAttemptOwner = !!ownAttempt;
 
-  if (!isAdmin && !isOwner) {
+  if (!isAdmin && !isUploader && !isAttemptOwner) {
     const { data: allocation } = await supabase
       .from("allocations")
       .select("id")
@@ -45,7 +52,7 @@ export async function GET(
       .eq("evaluator_id", profile.id)
       .maybeSingle();
 
-    if (!allocation && file.attempt?.student_id !== profile.id) {
+    if (!allocation) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }

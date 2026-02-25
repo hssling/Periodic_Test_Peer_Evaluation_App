@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { getSupabaseClient } from "@/lib/supabase/client";
+import { formatDate } from "@/lib/utils";
 import { Calendar, Loader2, Save, Shield, User } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -208,9 +209,7 @@ export default function AdminProfilePage() {
               <Calendar className="w-6 h-6 mx-auto text-muted-foreground mb-2" />
               <p className="text-xs text-muted-foreground">Member Since</p>
               <p className="font-medium">
-                {profile?.created_at
-                  ? new Date(profile.created_at).toLocaleDateString()
-                  : "-"}
+                {profile?.created_at ? formatDate(profile.created_at, { month: "short", day: "numeric", year: "numeric" }) : "-"}
               </p>
             </div>
             <div className="p-4 rounded-lg bg-muted/30 text-center">

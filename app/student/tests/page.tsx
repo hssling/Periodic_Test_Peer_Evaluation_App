@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { createClient } from "@/lib/supabase/server";
 import { LocalDateTime } from "@/components/shared/local-datetime";
-import { getTestStatus } from "@/lib/utils";
+import { getTestStatus, normalizeBatchYear } from "@/lib/utils";
 import { Database } from "@/types/supabase";
 import {
   ArrowRight,
@@ -40,12 +40,16 @@ export default async function StudentTestsPage() {
   }
 
   // Get tests for this student's batch
-  const { data: tests } = (await supabase
+  const normalizedBatch = normalizeBatchYear(profile.batch);
+  const testsQuery = supabase
     .from("tests")
     .select("*")
     .in("status", ["active", "published", "closed"])
-    .or(`target_batch.is.null,target_batch.eq.${profile.batch}`)
-    .order("start_at", { ascending: false })) as {
+    .order("start_at", { ascending: false });
+
+  const { data: tests } = (normalizedBatch
+    ? await testsQuery.or(`target_batch.is.null,target_batch.eq.${normalizedBatch}`)
+    : await testsQuery.is("target_batch", null)) as {
     data: Database["public"]["Tables"]["tests"]["Row"][] | null;
   };
 

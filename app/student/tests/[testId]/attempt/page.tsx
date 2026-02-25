@@ -1,5 +1,6 @@
 import { TestAttemptClient } from "@/components/student/test-attempt-client";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeBatchYear } from "@/lib/utils";
 import { notFound, redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,12 @@ export default async function TestAttemptPage({
 
   if (!test) {
     notFound();
+  }
+
+  const targetBatch = normalizeBatchYear(test.target_batch);
+  const studentBatch = normalizeBatchYear(profile.batch);
+  if (targetBatch && targetBatch !== studentBatch) {
+    redirect(`/student/tests/${params.testId}?error=batch_mismatch`);
   }
 
   // Get or create attempt

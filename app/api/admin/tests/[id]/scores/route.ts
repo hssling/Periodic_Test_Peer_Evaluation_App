@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { normalizeBatchYear } from "@/lib/utils";
 import { NextResponse } from "next/server";
 
 function toCsvRow(values: (string | number | null | undefined)[]) {
@@ -45,6 +46,7 @@ export async function GET(
   if (!test) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  const normalizedTargetBatch = normalizeBatchYear(test.target_batch);
 
   const { data: questions } = await supabase
     .from("questions")
@@ -54,12 +56,12 @@ export async function GET(
 
   let studentsQuery = supabase
     .from("profiles")
-    .select("id, name, roll_no, batch, section")
+    .select("id, name, roll_no, batch")
     .eq("role", "student")
     .eq("is_active", true);
 
-  if (test.target_batch) {
-    studentsQuery = studentsQuery.eq("batch", test.target_batch);
+  if (normalizedTargetBatch) {
+    studentsQuery = studentsQuery.eq("batch", normalizedTargetBatch);
   }
 
   const { data: studentsList } = await studentsQuery;
@@ -132,7 +134,6 @@ export async function GET(
     "Student Name",
     "Roll No",
     "Batch",
-    "Section",
     "Status",
     "Submitted At",
     "Final Score",
@@ -153,7 +154,6 @@ export async function GET(
       student.name,
       student.roll_no || "",
       student.batch || "",
-      student.section || "",
       attempt?.status || "not_attempted",
       attempt?.submitted_at || "",
       attempt?.final_score ?? "",

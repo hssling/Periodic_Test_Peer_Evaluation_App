@@ -106,7 +106,11 @@ export default async function StudentEvaluationsPage() {
             Completed ({completedAllocations.length})
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
-            {completedAllocations.map(allocation => (
+            {completedAllocations.map(allocation => {
+              const evaluation = Array.isArray(allocation.evaluation)
+                ? allocation.evaluation[0]
+                : allocation.evaluation;
+              return (
               <Card key={allocation.id} className="opacity-70">
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -121,12 +125,13 @@ export default async function StudentEvaluationsPage() {
                 <CardContent>
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <p>Submission Code: <span className="font-mono">Submission-{allocation.attempt_id.slice(0, 8)}</span></p>
-                    <p>Score Given: {allocation.evaluation?.total_score}/{allocation.attempt?.test?.total_marks}</p>
-                    <p>Submitted: {formatDate(allocation.evaluation?.submitted_at || '', { month: 'short', day: 'numeric' })}</p>
+                    <p>Score Given: {evaluation?.total_score ?? '-'}/{allocation.attempt?.test?.total_marks}</p>
+                    <p>Submitted: {evaluation?.submitted_at ? formatDate(evaluation.submitted_at, { month: 'short', day: 'numeric' }) : '-'}</p>
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         </section>
       )}

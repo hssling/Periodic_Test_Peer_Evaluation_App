@@ -152,7 +152,11 @@ export default async function AdminEvaluationsPage({
                   </tr>
                 </thead>
                 <tbody>
-              {allAllocations.map((allocation: any) => (
+              {allAllocations.map((allocation: any) => {
+                const evalData = Array.isArray(allocation.evaluation)
+                  ? allocation.evaluation[0]
+                  : allocation.evaluation;
+                return (
                 <tr key={allocation.id} className="border-b">
                       <td className="py-3 px-2">{allocation.attempt?.test?.title}</td>
                       <td className="py-3 px-2 hidden sm:table-cell">{allocation.evaluator?.name}</td>
@@ -160,7 +164,7 @@ export default async function AdminEvaluationsPage({
                         {allocation.attempt_id?.slice(0, 8).toUpperCase()}
                       </td>
                       <td className="py-3 px-2 hidden md:table-cell">
-                        {allocation.evaluation?.total_score ?? "-"}
+                        {evalData?.total_score ?? "-"}
                       </td>
                       <td className="py-3 px-2 text-center">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -183,7 +187,8 @@ export default async function AdminEvaluationsPage({
                         </a>
                       </td>
                     </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
