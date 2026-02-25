@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
-import { getSupabaseClient } from "@/lib/supabase/client";
 import {
   AlertTriangle,
   CheckCircle,
@@ -24,7 +23,6 @@ interface ImportResult {
 }
 
 export default function AdminUsersImportPage() {
-  const supabase = getSupabaseClient();
   const { toast } = useToast();
   const [csvData, setCsvData] = useState("");
   const [importing, setImporting] = useState(false);
@@ -87,25 +85,23 @@ Bob Wilson,bob@example.com,2024003,2024,B`;
         });
 
         try {
-          // Create Supabase auth user with random password
-          const tempPassword = `temp_${Math.random().toString(36).slice(2)}!`;
-
-          // Note: In production, use Supabase admin API or invite flow
-          // For now, we'll just create the profile
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .insert({
+          const response = await fetch("/api/users/import", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
               name: row.name,
               email: row.email,
               roll_no: row.roll_no || null,
               batch: row.batch || null,
               section: row.section || null,
-              role: "student",
-              is_active: true,
-            } as any);
+            }),
+          });
 
-          if (profileError) {
-            throw profileError;
+          if (!response.ok) {
+            const errorBody = await response
+              .json()
+              .catch(() => ({ error: "Import request failed" }));
+            throw new Error(errorBody.error || "Import request failed");
           }
 
           importResult.success++;
@@ -249,7 +245,7 @@ Bob Wilson,bob@example.com,2024003,2024,B`;
                 <p className="text-sm font-medium mb-2">Errors:</p>
                 <ul className="text-xs space-y-1 text-muted-foreground">
                   {result.errors.slice(0, 10).map((error, idx) => (
-                    <li key={idx}>• {error}</li>
+                    <li key={idx}>- {error}</li>
                   ))}
                   {result.errors.length > 10 && (
                     <li>...and {result.errors.length - 10} more errors</li>

@@ -91,6 +91,9 @@ export function TestAttemptClient({
   // Refs for tracking
   const saveTimeoutRef = useRef<Record<string, NodeJS.Timeout>>({});
   const timeSpentRef = useRef(initialTimeSpent);
+  const responsesRef = useRef(responses);
+  const isSubmittingRef = useRef(false);
+  const violationsLogRef = useRef<any[]>(baseViolations);
 
   // Current question
   const currentQuestion = questions[currentQuestionIndex];
@@ -117,6 +120,18 @@ export function TestAttemptClient({
     },
     [],
   );
+
+  useEffect(() => {
+    responsesRef.current = responses;
+  }, [responses]);
+
+  useEffect(() => {
+    isSubmittingRef.current = isSubmitting;
+  }, [isSubmitting]);
+
+  useEffect(() => {
+    violationsLogRef.current = baseViolations;
+  }, [baseViolations]);
 
   // Save response
   const saveResponse = useCallback(
@@ -170,7 +185,7 @@ export function TestAttemptClient({
 
   // Submit test
   const handleSubmit = useCallback(async () => {
-    if (isSubmitting) return;
+    if (isSubmittingRef.current) return;
 
     // Clear all pending save timeouts to prevent race conditions
     Object.values(saveTimeoutRef.current).forEach((timeout) =>
@@ -178,10 +193,11 @@ export function TestAttemptClient({
     );
     saveTimeoutRef.current = {};
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
 
     try {
-      const pendingResponses = Object.entries(responses);
+      const pendingResponses = Object.entries(responsesRef.current);
       if (pendingResponses.length > 0) {
         await Promise.all(
           pendingResponses.map(([questionId, response]) =>
@@ -239,10 +255,11 @@ export function TestAttemptClient({
         description: error.message || "Please try again.",
       });
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
       setShowSubmitDialog(false);
     }
-  }, [attempt.id, isSubmitting, responses, retryOperation, router, supabase, toast]);
+  }, [attempt.id, retryOperation, router, supabase, toast]);
 
   // Auto-submit when time runs out
   const handleAutoSubmit = useCallback(async () => {
@@ -315,14 +332,16 @@ export function TestAttemptClient({
   const handlePasteAttempt = useCallback(() => {
     setViolations((prev) => {
       const newCount = prev.pasteAttempts + 1;
+      const nextViolations = [
+        ...violationsLogRef.current,
+        { type: "paste_attempt", timestamp: new Date().toISOString() },
+      ];
+      violationsLogRef.current = nextViolations;
       supabase
         .from("attempts")
         .update({
           paste_attempts: newCount,
-          violations: [
-            ...baseViolations,
-            { type: "paste_attempt", timestamp: new Date().toISOString() },
-          ],
+          violations: nextViolations,
         })
         .eq("id", attempt.id);
 
@@ -335,7 +354,7 @@ export function TestAttemptClient({
 
       return { ...prev, pasteAttempts: newCount };
     });
-  }, [attempt.id, baseViolations, supabase, toast]);
+  }, [attempt.id, supabase, toast]);
 
   // Timer effect
   useEffect(() => {
@@ -368,15 +387,17 @@ export function TestAttemptClient({
       if (document.hidden) {
         setViolations((prev) => {
           const newCount = prev.tabSwitches + 1;
+          const nextViolations = [
+            ...violationsLogRef.current,
+            { type: "tab_switch", timestamp: new Date().toISOString() },
+          ];
+          violationsLogRef.current = nextViolations;
           // Log violation
           supabase
             .from("attempts")
             .update({
               tab_switches: newCount,
-              violations: [
-                ...baseViolations,
-                { type: "tab_switch", timestamp: new Date().toISOString() },
-              ],
+              violations: nextViolations,
             })
             .eq("id", attempt.id);
 
@@ -394,7 +415,7 @@ export function TestAttemptClient({
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () =>
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, [attempt.id, baseViolations, supabase, toast]);
+  }, [attempt.id, supabase, toast]);
 
   // Get timer color
   const getTimerColor = () => {
@@ -613,7 +634,7 @@ export function TestAttemptClient({
                 }}
               />
               {uploadingIds.size > 0 && (
-                <p className="text-xs text-muted-foreground">Uploading…</p>
+                <p className="text-xs text-muted-foreground">Uploading...</p>
               )}
               <AttachmentList files={attachments} />
             </div>

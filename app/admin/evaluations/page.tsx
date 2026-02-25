@@ -19,6 +19,22 @@ export default async function AdminEvaluationsPage({
   const to = from + pageSize - 1;
   const statusFilter = searchParams?.status;
 
+  const [{ count: pendingCount }, { count: inProgressCount }, { count: completedCount }] =
+    await Promise.all([
+      supabase
+        .from("allocations")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending"),
+      supabase
+        .from("allocations")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "in_progress"),
+      supabase
+        .from("allocations")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "completed"),
+    ]);
+
   // Get all allocations with attempts and test info
   let allocationsQuery = supabase
     .from('allocations')
@@ -40,8 +56,6 @@ export default async function AdminEvaluationsPage({
   const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
   
   const pending = allAllocations.filter(a => a.status === 'pending');
-  const inProgress = allAllocations.filter(a => a.status === 'in_progress');
-  const completed = allAllocations.filter(a => a.status === 'completed');
 
   return (
     <div className="space-y-6">
@@ -63,7 +77,7 @@ export default async function AdminEvaluationsPage({
                 <Clock className="w-5 h-5 text-warning" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{pending.length}</p>
+                <p className="text-2xl font-bold">{pendingCount || 0}</p>
                 <p className="text-xs text-muted-foreground">Pending</p>
               </div>
             </div>
@@ -76,7 +90,7 @@ export default async function AdminEvaluationsPage({
                 <ClipboardList className="w-5 h-5 text-info" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{inProgress.length}</p>
+                <p className="text-2xl font-bold">{inProgressCount || 0}</p>
                 <p className="text-xs text-muted-foreground">In Progress</p>
               </div>
             </div>
@@ -89,7 +103,7 @@ export default async function AdminEvaluationsPage({
                 <CheckCircle className="w-5 h-5 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{completed.length}</p>
+                <p className="text-2xl font-bold">{completedCount || 0}</p>
                 <p className="text-xs text-muted-foreground">Completed</p>
               </div>
             </div>

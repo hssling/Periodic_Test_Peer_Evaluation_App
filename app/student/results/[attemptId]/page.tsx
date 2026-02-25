@@ -63,14 +63,22 @@ export default async function ResultsPage({ params }: ResultsPageProps) {
     .eq("status", "completed");
 
   const evaluations =
-    allocations?.map((a) => a.evaluation).filter(Boolean) || [];
+    allocations?.flatMap((a: any) =>
+      Array.isArray(a.evaluation)
+        ? a.evaluation.filter(Boolean)
+        : a.evaluation
+          ? [a.evaluation]
+          : [],
+    ) || [];
   const avgScore =
     evaluations.length > 0
       ? Math.round(
           evaluations.reduce((sum, e) => sum + (e?.total_score || 0), 0) /
             evaluations.length,
         )
-      : null;
+      : typeof attempt.final_score === "number"
+        ? Math.round(attempt.final_score)
+        : null;
 
   const responsesByQuestion = new Map(
     responses?.map((r) => [r.question_id, r]),

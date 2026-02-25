@@ -44,15 +44,26 @@ export default async function StudentResultsPage() {
 
   const allAttempts = (attempts || []).map((a) => {
     const evaluations =
-      a.allocations?.map((al: any) => al.evaluation).filter(Boolean) || [];
+      a.allocations?.flatMap((al: any) =>
+        Array.isArray(al.evaluation)
+          ? al.evaluation.filter(Boolean)
+          : al.evaluation
+            ? [al.evaluation]
+            : [],
+      ) || [];
 
-    const score =
+    const scoreFromEvaluations =
       evaluations.length > 0
         ? evaluations.reduce(
             (sum: number, e: any) => sum + (e.total_score || 0),
             0,
           ) / evaluations.length
-        : 0;
+        : null;
+
+    const score =
+      typeof a.final_score === "number" && !Number.isNaN(a.final_score)
+        ? a.final_score
+        : (scoreFromEvaluations ?? 0);
 
     return { ...a, final_score: score };
   });
